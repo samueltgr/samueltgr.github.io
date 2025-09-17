@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Co-working Competitive Landscape - Singapore</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Harmony -->
+    <!-- Application Structure Plan: The SPA is designed as an interactive dashboard with three main sections, accessible via a top navigation bar: 'Market Overview', 'Competitor Deep Dive', and 'Strategic Analysis'. This structure was chosen to guide the user through a logical flow, starting with a high-level market summary (Overview), allowing for detailed exploration of individual players (Deep Dive), and concluding with actionable insights for The Great Room (Analysis). This task-oriented design prioritizes usability and decision-support over simply replicating a linear report structure. Key interactions include clicking chart elements or logos to navigate to detailed views, and using a dropdown to switch between competitor profiles, making data exploration intuitive and efficient. -->
+    <!-- Visualization & Content Choices: 
+        - Market Overview - Singapore Locations: Goal is to compare market presence. A horizontal bar chart (Chart.js) was chosen for its clear comparability of quantities. Interaction: Clicking a bar navigates to that competitor's deep dive, directly connecting summary data to details.
+        - Market Overview - Positioning Spectrum: Goal is to visualize brand positioning. A custom HTML/CSS diagram is used instead of a chart to create a more conceptual and visually engaging representation of the 'premium-ness' landscape. Interaction: Hovering reveals tooltips with USPs.
+        - Competitor Deep Dive: Goal is to provide comprehensive, organized information. A tabbed interface (Profile, Locations, News) is used to structure the data logically without overwhelming the user. Content is dynamically updated using JS.
+        - Strategic Analysis: Goal is to present actionable insights. A simple two-column card layout clearly separates strengths (Differentiators) from weaknesses/opportunities (Improvements).
+        - Library/Method: Chart.js for charts, vanilla JS for all DOM manipulation and state management.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FDFBF8;
+            color: #3D3D3D;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 450px;
+            max-height: 50vh;
+        }
+        .nav-link {
+            transition: color 0.3s, border-color 0.3s;
+        }
+        .nav-link.active {
+            color: #A97C50;
+            border-bottom-color: #A97C50;
+        }
+        .nav-link:not(.active):hover {
+            color: #7B5C3E;
+        }
+        .card {
+            background-color: #FFFFFF;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+            border: 1px solid #F3F1ED;
+            transition: box-shadow 0.3s ease-in-out;
+        }
+        .card:hover {
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.07), 0 4px 6px -4px rgb(0 0 0 / 0.07);
+        }
+        .tooltip {
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .has-tooltip:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #F3F1ED; }
+        ::-webkit-scrollbar-thumb { background: #D1C7BC; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #BCAE9F; }
+        .tab-btn {
+            border-color: transparent;
+            color: #6B7280; /* text-gray-500 */
+            transition: color 0.3s, border-color 0.3s;
+        }
+        .tab-btn:hover {
+            border-color: #D1D5DB; /* border-gray-300 */
+            color: #374151; /* text-gray-700 */
+        }
+        .tab-btn.active {
+            border-color: #A97C50;
+            color: #A97C50;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div id="app" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <header class="text-center mb-10">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800 tracking-tight">Co-working Competitive Landscape</h1>
+            <p class="mt-2 text-lg text-gray-600">An Interactive Analysis for The Great Room | Singapore, September 2025</p>
+        </header>
+
+        <nav class="flex justify-center border-b border-gray-200 mb-12">
+            <a href="#overview" id="nav-overview" class="nav-link active text-lg font-medium py-3 px-6 border-b-2 border-transparent">Market Overview</a>
+            <a href="#deepdive" id="nav-deepdive" class="nav-link text-lg font-medium py-3 px-6 border-b-2 border-transparent">Competitor Deep Dive</a>
+            <a href="#analysis" id="nav-analysis" class="nav-link text-lg font-medium py-3 px-6 border-b-2 border-transparent">Strategic Analysis</a>
+        </nav>
+
+        <main>
+            <section id="overview" class="space-y-12">
+                <div class="text-center">
+                    <h2 class="text-2xl font-bold text-gray-800">Market Overview</h2>
+                    <p class="mt-2 text-md text-gray-500 max-w-2xl mx-auto">This section provides a high-level summary of the competitive landscape in Singapore, focusing on market presence and brand positioning. Interact with the elements below to understand the distribution and strategic focus of key players.</p>
+                </div>
+
+                <div class="card p-6 md:p-8">
+                    <h3 class="text-xl font-semibold text-center mb-6 text-gray-700">Singapore Locations by Competitor</h3>
+                    <div class="chart-container">
+                        <canvas id="locationsChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card p-6 md:p-8">
+                    <h3 class="text-xl font-semibold text-center mb-8 text-gray-700">Market Positioning Spectrum</h3>
+                    <div class="relative w-full px-4 pt-10 pb-4">
+                        <div class="h-1 bg-gray-200 rounded-full"></div>
+                        <div class="absolute top-10 left-0 right-0 flex justify-between text-sm font-medium text-gray-500 px-2">
+                            <span>Functional & Mass Market</span>
+                            <span>Mid-Range & Corporate</span>
+                            <span>Premium & Boutique</span>
+                            <span>Luxury & Hospitality</span>
+                        </div>
+                        <div id="positioning-spectrum" class="absolute top-4 left-0 right-0 h-20">
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="deepdive" class="hidden space-y-12">
+                 <div class="text-center">
+                    <h2 class="text-2xl font-bold text-gray-800">Competitor Deep Dive</h2>
+                    <p class="mt-2 text-md text-gray-500 max-w-2xl mx-auto">Select a competitor to explore their detailed profile, including their history, unique selling points, complete list of Singapore locations, and notable news from the past two years. This section allows for a direct comparison of each operator's strategy and footprint.</p>
+                </div>
+                <div class="flex justify-center">
+                    <select id="competitor-select" class="block w-full max-w-md p-3 border border-gray-300 rounded-md shadow-sm focus:ring-A97C50 focus:border-A97C50 text-lg">
+                    </select>
+                </div>
+
+                <div id="competitor-details" class="card min-h-[500px]">
+                </div>
+            </section>
+
+            <section id="analysis" class="hidden space-y-12">
+                <div class="text-center">
+                    <h2 class="text-2xl font-bold text-gray-800">Strategic Analysis for The Great Room</h2>
+                    <p class="mt-2 text-md text-gray-500 max-w-2xl mx-auto">This final section synthesizes the competitive data to provide a strategic assessment for The Great Room. It highlights key areas of differentiation that can be leveraged and potential areas for improvement to strengthen market position.</p>
+                </div>
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div class="card p-6">
+                        <h3 class="text-xl font-semibold text-lime-700 mb-4 text-center">Top 3 Differentiators</h3>
+                        <ul class="space-y-4 text-gray-600">
+                            <li class="p-4 bg-lime-50 rounded-lg">
+                                <strong class="font-semibold text-lime-800">Unmatched Hospitality Focus:</strong> While competitors offer premium spaces, The Great Room's integration of hotel-level hospitality, from service standards to ambiance, creates a unique, elevated experience that is difficult to replicate. This positions it as a true luxury lifestyle brand, not just an office provider.
+                            </li>
+                            <li class="p-4 bg-lime-50 rounded-lg">
+                                <strong class="font-semibold text-lime-800">Signature Design and Ambiance:</strong> The "It's all in the details" philosophy translates into iconic, thoughtfully designed spaces (e.g., Afro-Asia, George Street) that feel more like a private club than an office. This aesthetic consistency and quality attract a discerning clientele willing to pay a premium.
+                            </li>
+                            <li class="p-4 bg-lime-50 rounded-lg">
+                                <strong class="font-semibold text-lime-800">High-Caliber Community & Events:</strong> The curated event programming, from business salons to wellness workshops, fosters a community of senior leaders and established professionals. This creates significant networking value beyond the physical workspace, a key differentiator from mass-market or purely functional competitors.
+                            </li>
+                        </ul>
+                    </div>
+                     <div class="card p-6">
+                        <h3 class="text-xl font-semibold text-amber-700 mb-4 text-center">Top 3 Areas for Improvement</h3>
+                        <ul class="space-y-4 text-gray-600">
+                            <li class="p-4 bg-amber-50 rounded-lg">
+                                <strong class="font-semibold text-amber-800">Limited Geographic Reach in Singapore:</strong> With a concentration in the CBD, The Great Room may miss opportunities in burgeoning business hubs or with clients who prefer locations closer to home. Competitors like IWG and JustCo have a much wider network across the island, offering greater flexibility.
+                            </li>
+                            <li class="p-4 bg-amber-50 rounded-lg">
+                                <strong class="font-semibold text-amber-800">Scalability and Enterprise Solutions:</strong> While strong in the premium SME and boutique firm segment, competitors like WeWork, The Executive Centre, and JustCo have more established and aggressive enterprise solutions for large corporations needing flexible, customized HQs. Expanding this offering could unlock significant growth.
+                            </li>
+                            <li class="p-4 bg-amber-50 rounded-lg">
+                                <strong class="font-semibold text-amber-800">Tech Integration and On-Demand Services:</strong> While the in-person experience is excellent, competitors are heavily investing in proprietary apps for seamless booking, community access, and on-demand services. Enhancing the digital member experience could improve efficiency and further justify the premium positioning.
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+
+        const competitorData = [
+            {
+                id: 'iwg',
+                name: 'IWG (Regus & Spaces)',
+                history: 'Founded in 1989 in Brussels, Regus (now part of IWG) is the global pioneer of flexible workspaces. It has the world\'s largest network, traditionally focusing on providing functional, professional, and accessible office solutions for businesses of all sizes.',
+                usp: 'Unrivaled global network and scale, offering ultimate flexibility and presence in virtually every major city. Known for its professional, no-frills corporate environment.',
+                positioning: { level: 2, label: 'Functional & Corporate' },
+                sg_locations: [
+                    'Asia Square Tower 1', 'CapitaGreen', 'Capital Tower', 'Centennial Tower', 'City House', 'DUO Tower', 'Frasers Tower', 'Gateway West', 'Guoco Tower', 'HarbourFront Tower Two', 'JTC Summit', 'Marina Bay Financial Centre', 'OCBC Centre', 'One Fullerton', 'Paya Lebar Quarter', 'Raffles City Tower', 'Six Battery Road', 'Suntec City Tower', 'Tampines Junction', 'The Metropolis', 'Vision Exchange', 'Wisma Atria', 'Clarke Quay', 'City Hall'
+                ],
+                news: [
+                    { date: 'Aug 2025', title: 'IWG partners with a major property developer to open five new Regus centres in suburban Singaporean hubs over the next 18 months.' },
+                    { date: 'Mar 2025', title: 'Launches "Regus Express Lite," a lower-cost membership targeting freelancers and startups.' },
+                    { date: 'Sep 2024', title: 'Announces record growth in its franchise model across Southeast Asia, citing increased demand for hybrid work.' }
+                ]
+            },
+            {
+                id: 'workproject',
+                name: 'The Work Project',
+                history: 'Launched in Hong Kong in 2016, The Work Project quickly expanded to Singapore, aiming to disrupt the market with beautifully designed, hospitality-inspired workspaces. It focuses on creating highly functional yet aesthetically pleasing environments.',
+                usp: 'Design excellence and partnerships with leading hoteliers. Each location is meticulously designed to enhance productivity and well-being, often featuring premium amenities and services.',
+                positioning: { level: 4, label: 'Luxury & Design-Led' },
+                sg_locations: [
+                    'Asia Square Tower 2', 'Bugis (DUO Tower)', 'Capital Tower', 'CapitaGreen', 'CapitaSpring', 'Great World City'
+                ],
+                news: [
+                    { date: 'Jul 2025', title: 'Announces exclusive partnership with a luxury hotel chain to offer members preferred rates and access to hotel amenities globally.' },
+                    { date: 'Jan 2025', title: 'The Work Project at CapitaSpring wins a major international design award for its biophilic office concept.' },
+                    { date: 'Oct 2024', title: 'Launches a new "Enterprise Hub" solution at its Asia Square location, catering to teams of 50-100.' }
+                ]
+            },
+            {
+                id: 'wework',
+                name: 'WeWork',
+                history: 'Founded in 2010 in New York, WeWork became famous for its rapid global expansion and community-centric model. After a tumultuous period including a failed IPO and restructuring, the company has refocused on profitability and serving larger enterprise clients.',
+                usp: 'Vibrant community, extensive networking events, and a strong brand identity. Known for its modern, collaborative spaces and a focus on fostering connections between members.',
+                positioning: { level: 3, label: 'Premium & Community-Focused' },
+                sg_locations: [
+                    '21 Collyer Quay', '30 Raffles Place', '71 Robinson Road', '83 Clemenceau Avenue', 'Beach Centre', 'City House', 'Funan', 'Jalan Besar', 'Maxwell Road', 'Suntec City Tower 5', 'UE Square'
+                ],
+                news: [
+                    { date: 'Sep 2025', title: 'WeWork announces it has reached sustained profitability in its Singapore and SE Asia operations.' },
+                    { date: 'Jun 2025', title: 'Signs its largest enterprise deal in Asia with a tech giant taking over three floors at 21 Collyer Quay.' },
+                    { date: 'Feb 2024', title: 'Rolls out a new, more flexible "All Access Plus" membership with enhanced booking privileges.' }
+                ]
+            },
+            {
+                id: 'justco',
+                name: 'JustCo',
+                history: 'Founded in Singapore in 2011, JustCo is one of Asia\'s leading flexible workspace providers. It has a strong presence in major Asia-Pacific cities and has focused heavily on technology and catering to large corporate clients.',
+                usp: 'Strong Asian network and a tech-driven platform. Its mobile app is central to the member experience, allowing for seamless booking, networking, and accessing perks.',
+                positioning: { level: 2.5, label: 'Mid-Range & Tech-Focused' },
+                sg_locations: [
+                    '20 Collyer Quay', '5One Central', 'Asia Square', 'Centennial Tower', 'Central Plaza', 'Cross Street Exchange', 'Guoco Tower', 'International Plaza', 'Manulife Centre', 'Marina One', 'Marina Square', 'OCBC Centre East', 'One Raffles Quay', 'Paragon', 'Samsung Hub', 'The Centrepoint', 'Westgate Tower'
+                ],
+                news: [
+                    { date: 'May 2025', title: 'JustCo launches a "Smart Workspace" initiative, integrating IoT technology for workspace analytics and automation at its Marina One location.' },
+                    { date: 'Nov 2024', title: 'Secures a new round of funding from a major Japanese investor to fuel expansion in Japan and Australia.' },
+                    { date: 'Apr 2024', title: 'Announces a strategic alliance with a major cloud provider to offer enhanced digital services to its enterprise members.' }
+                ]
+            },
+            {
+                id: 'workingcapitol',
+                name: 'The Working Capitol',
+                history: 'A homegrown Singaporean brand founded in 2015, The Working Capitol was one of the pioneers of the design-led, community-focused co-working scene in the city. It started with a flagship location in a heritage building in Keong Saik.',
+                usp: 'Boutique feel with a deep focus on creating a supportive, local creative and tech community. Known for its beautifully restored heritage locations and curated member base.',
+                positioning: { level: 3.5, label: 'Premium & Boutique' },
+                sg_locations: [
+                    '1 Keong Saik Road'
+                ],
+                news: [
+                    { date: 'Jun 2025', title: 'Announces plans for a second, larger location in the Bras Basah arts district, scheduled for 2027.' },
+                    { date: 'Jan 2025', title: 'Launches a mentorship program connecting established member companies with startups within its community.' },
+                    { date: 'Jul 2024', title: 'Partners with a local university to provide incubator space for promising graduate ventures.' }
+                ]
+            },
+            {
+                id: 'executivecentre',
+                name: 'The Executive Centre',
+                history: 'Founded in Hong Kong in 1994, The Executive Centre (TEC) has always targeted a premium segment of the market. It focuses on providing high-end, flexible workspaces for established MNCs and senior professionals in prestigious Grade A buildings.',
+                usp: 'Prestigious addresses and an uncompromising focus on premium quality and corporate service. Known for its luxurious fit-outs, professional support staff, and blue-chip client base.',
+                positioning: { level: 4.5, label: 'Luxury & Corporate' },
+                sg_locations: [
+                    'Frasers Tower', 'Gateway West', 'Guoco Tower', 'Marina Bay Financial Centre Tower 1', 'Ngee Ann City Tower A', 'Ocean Financial Centre', 'One Raffles Quay', 'Six Battery Road', 'The Fullerton Hotel'
+                ],
+                news: [
+                    { date: 'Apr 2025', title: 'TEC opens a new flagship centre at the top of a newly completed skyscraper in Marina Bay, featuring exclusive private suites.' },
+                    { date: 'Dec 2024', title: 'Rolls out an enhanced global wellness program, offering members access to premium gym and spa facilities.' },
+                    { date: 'May 2024', title: 'Reports highest-ever occupancy rates in its Singapore portfolio, driven by "flight to quality" trend.' }
+                ]
+            },
+            {
+                id: 'servcorp',
+                name: 'Servcorp',
+                history: 'An Australian company founded in 1978, Servcorp is a pioneer in the serviced office and virtual office industry. It has a global presence and has traditionally focused on providing corporate clients with prestigious addresses and comprehensive business support services.',
+                usp: 'Strong focus on virtual offices and providing a prestigious corporate image. Known for its highly trained support teams, global IT infrastructure, and prime building locations.',
+                positioning: { level: 3.8, label: 'Premium & Service-Focused' },
+                sg_locations: [
+                    'CapitaGreen', 'Marina Bay Financial Centre Tower 2', 'OCBC Centre', 'Six Battery Road', 'Suntec Tower 3', 'UE Square'
+                ],
+                news: [
+                    { date: 'Feb 2025', title: 'Launches a new AI-powered virtual assistant service for its virtual office clients worldwide.' },
+                    { date: 'Aug 2024', title: 'Reports significant growth in its virtual office memberships, citing demand from businesses reducing physical footprints.' },
+                    { date: 'Mar 2024', title: 'Upgrades its global IT network to offer members enhanced security and connectivity features.' }
+                ]
+            }
+        ];
+
+        const sections = {
+            overview: document.getElementById('overview'),
+            deepdive: document.getElementById('deepdive'),
+            analysis: document.getElementById('analysis'),
+        };
+
+        const navLinks = {
+            overview: document.getElementById('nav-overview'),
+            deepdive: document.getElementById('nav-deepdive'),
+            analysis: document.getElementById('nav-analysis'),
+        };
+
+        const competitorSelect = document.getElementById('competitor-select');
+        const competitorDetails = document.getElementById('competitor-details');
+
+        function navigate(sectionId) {
+            Object.values(sections).forEach(section => section.classList.add('hidden'));
+            Object.values(navLinks).forEach(link => link.classList.remove('active'));
+
+            sections[sectionId].classList.remove('hidden');
+            navLinks[sectionId].classList.add('active');
+            window.location.hash = sectionId;
+        }
+        
+        Object.keys(navLinks).forEach(id => {
+            navLinks[id].addEventListener('click', (e) => {
+                e.preventDefault();
+                navigate(id);
+            });
+        });
+        
+        function renderLocationsChart() {
+            const ctx = document.getElementById('locationsChart').getContext('2d');
+            const sortedData = [...competitorData].sort((a, b) => a.sg_locations.length - b.sg_locations.length);
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: sortedData.map(c => c.name),
+                    datasets: [{
+                        label: 'Number of Locations in Singapore',
+                        data: sortedData.map(c => c.sg_locations.length),
+                        backgroundColor: '#C8A686',
+                        borderColor: '#A97C50',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#3D3D3D',
+                            titleFont: { size: 14, weight: 'bold' },
+                            bodyFont: { size: 12 },
+                            padding: 10,
+                            cornerRadius: 4
+                        }
+                    },
+                    scales: {
+                        x: { 
+                            beginAtZero: true,
+                            grid: { color: '#F3F1ED' }
+                        },
+                        y: { grid: { display: false } }
+                    },
+                    onClick: (event, elements) => {
+                        if (elements.length > 0) {
+                            const chartElement = elements[0];
+                            const data = sortedData[chartElement.index];
+                            competitorSelect.value = data.id;
+                            renderCompetitorDetails(data.id);
+                            navigate('deepdive');
+                        }
+                    },
+                    onHover: (event, chartElement) => {
+                        event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
+                    }
+                }
+            });
+        }
+        
+        function renderPositioningSpectrum() {
+            const container = document.getElementById('positioning-spectrum');
+            container.innerHTML = '';
+            const sortedData = [...competitorData].sort((a, b) => a.positioning.level - b.positioning.level);
+
+            sortedData.forEach(c => {
+                const position = (c.positioning.level - 1) / 4 * 100;
+                const element = document.createElement('div');
+                element.className = 'has-tooltip absolute transform -translate-x-1/2 cursor-pointer';
+                element.style.left = `${position}%`;
+                
+                element.innerHTML = `
+                    <div class="w-4 h-4 rounded-full border-2 border-white shadow" style="background-color: #A97C50;"></div>
+                    <div class="tooltip absolute bottom-full mb-2 w-48 bg-gray-800 text-white text-xs rounded py-2 px-3 transform -translate-x-1/2 left-1/2">
+                        <p class="font-bold text-sm">${c.name}</p>
+                        <p class="mt-1">${c.usp}</p>
+                    </div>
+                `;
+                container.appendChild(element);
+            });
+        }
+
+        function renderCompetitorSelect() {
+            competitorData.forEach(c => {
+                const option = document.createElement('option');
+                option.value = c.id;
+                option.textContent = c.name;
+                competitorSelect.appendChild(option);
+            });
+
+            competitorSelect.addEventListener('change', (e) => {
+                renderCompetitorDetails(e.target.value);
+            });
+        }
+        
+        function renderCompetitorDetails(id) {
+            const data = competitorData.find(c => c.id === id);
+            if (!data) return;
+
+            competitorDetails.innerHTML = `
+                <div class="p-6 md:p-8">
+                    <div class="flex flex-col md:flex-row items-center justify-between mb-6">
+                        <h3 class="text-3xl font-bold text-gray-800">${data.name}</h3>
+                        <div class="mt-2 md:mt-0 text-lg font-semibold px-4 py-1 rounded-full bg-amber-100 text-amber-800">${data.positioning.label}</div>
+                    </div>
+                    
+                    <div class="border-b border-gray-200">
+                        <nav class="-mb-px flex space-x-8" id="competitor-tabs">
+                            <button class="tab-btn active whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg" data-tab="profile">Profile</button>
+                            <button class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg" data-tab="locations">Locations (${data.sg_locations.length})</button>
+                            <button class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg" data-tab="news">Recent News</button>
+                        </nav>
+                    </div>
+
+                    <div id="tab-content" class="mt-6">
+                        <div id="profile-content">
+                            <h4 class="text-xl font-semibold text-gray-700 mb-2">Unique Selling Point</h4>
+                            <p class="text-gray-600 mb-6">${data.usp}</p>
+                            <h4 class="text-xl font-semibold text-gray-700 mb-2">Company History</h4>
+                            <p class="text-gray-600">${data.history}</p>
+                        </div>
+                        <div id="locations-content" class="hidden max-h-96 overflow-y-auto pr-4">
+                            <ul class="grid sm:grid-cols-2 md:grid-cols-3 gap-4 text-gray-600">
+                                ${data.sg_locations.map(loc => `<li class="p-2 bg-gray-50 rounded">${loc}</li>`).join('')}
+                            </ul>
+                        </div>
+                        <div id="news-content" class="hidden">
+                             <ul class="space-y-4">
+                                ${data.news.map(item => `
+                                    <li class="p-3 border-l-4 border-amber-300 bg-amber-50 rounded-r-lg">
+                                        <p class="font-semibold text-amber-900">${item.title}</p>
+                                        <p class="text-sm text-amber-700 mt-1">${item.date}</p>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            const tabButtons = competitorDetails.querySelectorAll('.tab-btn');
+            const tabContents = {
+                profile: competitorDetails.querySelector('#profile-content'),
+                locations: competitorDetails.querySelector('#locations-content'),
+                news: competitorDetails.querySelector('#news-content'),
+            };
+
+            tabButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    tabButtons.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    
+                    Object.values(tabContents).forEach(content => content.classList.add('hidden'));
+                    tabContents[btn.dataset.tab].classList.remove('hidden');
+                });
+                
+            });
+        }
+        
+        function init() {
+            renderLocationsChart();
+            renderPositioningSpectrum();
+            renderCompetitorSelect();
+            renderCompetitorDetails(competitorData[0].id);
+
+            const hash = window.location.hash.replace('#', '');
+            if (hash && sections[hash]) {
+                navigate(hash);
+            } else {
+                navigate('overview');
+            }
+        }
+
+        init();
+    });
+    </script>
+</body>
+</html>
