@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PPC Budget Dashboard (Local, Single-Page)</title>
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    html, body { height: 100%; font-size: 14px; } /* base font size 14px */
+    .number-input::-webkit-outer-spin-button,
+    .number-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .number-input[type=number] { -moz-appearance: textfield; }
+    .sticky-shadow { box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+    .scroll-slim::-webkit-scrollbar { width: 8px; height: 8px; }
+    .scroll-slim::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+  <!-- Top bar -->
+  <header class="fixed top-0 inset-x-0 bg-white/90 backdrop-blur border-b border-slate-200 sticky-shadow z-50">
+    <div class="max-w-svw mx-auto px-4 py-3 flex items-center gap-3">
+      <!-- Market tabs in navbar (acronyms) -->
+      <nav id="marketTabsNav" class="flex items-center gap-2"></nav>
+
+      <div class="ml-auto flex items-center gap-2">
+        <label class="text-sm text-slate-600">Primary Currency</label>
+        <select id="primaryCurrency" class="px-3 py-2 border rounded-lg bg-white">
+          <option value="SGD">SGD</option>
+          <option value="THB">THB</option>
+          <option value="HKD">HKD</option>
+          <option value="AUD">AUD</option>
+          <option value="USD">USD</option>
+          <option value="MYR">MYR</option>
+          <option value="IDR">IDR</option>
+          <option value="EUR">EUR</option>
+          <option value="GBP">GBP</option>
+          <option value="JPY">JPY</option>
+        </select>
+        <div id="dateInfo" class="text-sm text-slate-500 ml-2"></div>
+        <button id="importBtn" class="text-sm px-3 py-2 border rounded-lg hover:bg-slate-100">Import</button>
+        <button id="exportBtn" class="text-sm px-3 py-2 border rounded-lg hover:bg-slate-100">Export</button>
+        <button id="resetBtn" class="text-sm px-3 py-2 border rounded-lg hover:bg-slate-100">Reset</button>
+        <input id="importInput" type="file" accept="application/json" class="hidden" />
+      </div>
+    </div>
+  </header>
+
+  <!-- Content -->
+  <main class="max-w-svw mx-auto px-4 pt-24 pb-6">
+    <!-- Grid: Left 2 (controls), Middle 7 (table), Metrics 3, Simulation 0 (hidden) -->
+    <div class="grid grid-cols-12 gap-4 items-start">
+      <!-- Leftmost: Budgets & Controls (single column layout, narrower) -->
+      <aside id="colLeft" class="col-span-12 lg:col-span-2">
+        <div class="bg-white border border-slate-200 rounded-xl p-4">
+          <div class="font-semibold text-lg">Budgets & Controls</div>
+          <div class="mt-3 space-y-3">
+            <div>
+              <label class="text-xs text-slate-600">Total Monthly Budget (Primary)</label>
+              <input id="budgetPrimary" type="number" inputmode="decimal" class="number-input mt-1 w-full px-3 py-2 border rounded-lg" placeholder="e.g., 10000">
+            </div>
+            <div>
+              <label class="text-xs text-slate-600">Total Monthly Budget (Local)</label>
+              <input id="budgetLocal" type="number" inputmode="decimal" class="number-input mt-1 w-full px-3 py-2 border rounded-lg" placeholder="auto/enter">
+            </div>
+            <div>
+              <label class="text-xs text-slate-600">Current Spend MTD (Local)</label>
+              <input id="currentSpendLocal" type="number" inputmode="decimal" class="number-input mt-1 w-full px-3 py-2 border rounded-lg" placeholder="e.g., 4200">
+            </div>
+            <div>
+              <label class="text-xs text-slate-600 flex items-center gap-1">Exchange Rate <span class="text-[10px] px-1 py-0.5 bg-slate-100 rounded">1 Local → Primary</span></label>
+              <input id="exchangeRate" type="number" step="0.000001" inputmode="decimal" class="number-input mt-1 w-full px-3 py-2 border rounded-lg" placeholder="e.g., 0.99">
+            </div>
+            <div class="flex items-center gap-2 text-xs text-slate-600">
+              <input id="toggleIncludeMTD" type="checkbox" class="h-4 w-4">
+              <label for="toggleIncludeMTD">Use <b>Projected Month Total</b> (MTD + future) for budget % and change calc</label>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Middle: Campaign rows -->
+      <section id="colMiddle" class="col-span-12 lg:col-span-7">
+        <div class="bg-white border border-slate-200 rounded-xl p-4">
+          <div class="flex items-baseline justify-between">
+            <div>
+              <div id="marketTitle" class="text-lg font-semibold">Market</div>
+              <div id="marketCurrency" class="text-sm text-slate-500">Local Currency</div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button id="simulateBtn" class="px-3 py-2 border rounded-lg hover:bg-slate-100">Simulate</button>
+              <button id="addRowBtn" class="px-3 py-2 border rounded-lg hover:bg-slate-100">+ Add Campaign</button>
+            </div>
+          </div>
+          <!-- Internal scroll to keep page compact -->
+          <div class="mt-4 overflow-auto scroll-slim max-h-[62vh]">
+            <table id="campaignTable" class="w-full text-sm">
+              <thead class="sticky top-0 bg-white">
+                <tr class="text-left border-b">
+                  <th class="py-2 pr-2">Campaign Name</th>
+                  <th class="py-2 pr-2 w-40">Daily Spend (Local)</th>
+                  <th class="py-2 pr-2 w-36 th-sim hidden">Simulated</th>
+                  <th class="py-2 pr-2 w-16 th-on hidden">On?</th>
+                  <th class="py-2 w-12"></th>
+                </tr>
+              </thead>
+              <tbody id="campaignBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right: Auto-generated Metrics (single column) -->
+      <section id="colMetrics" class="col-span-12 lg:col-span-3">
+        <div class="bg-white border border-slate-200 rounded-xl p-4">
+          <div class="font-semibold text-lg">Auto-generated Metrics</div>
+          <div id="metrics" class="mt-3 grid grid-cols-1 gap-3 max-h-[62vh] overflow-auto scroll-slim"></div>
+          <div class="text-xs text-slate-500 mt-3 border-t pt-3">
+            Projection “future spend to month-end”: <em>current total daily spend × remaining days (incl. today)</em>.
+            <b>Projected Month Total</b> = MTD + future (toggle in Budgets & Controls).
+          </div>
+        </div>
+      </section>
+
+      <!-- Simulation column (expands/collapses when interacting with simulation) -->
+      <section id="colSim" class="col-span-12 lg:col-span-0 hidden">
+        <div class="bg-white border border-slate-200 rounded-xl p-4">
+          <div class="flex items-center justify-between">
+            <div class="font-semibold text-lg">Simulation Metrics</div>
+            <button id="collapseSimBtn" class="text-sm px-2 py-1 border rounded hover:bg-slate-100">Collapse</button>
+          </div>
+          <div id="simMetrics" class="mt-3 grid grid-cols-1 gap-3 max-h-[58vh] overflow-auto scroll-slim"></div>
+          <div class="mt-3 flex items-center justify-between">
+            <button id="clearSimBtn" class="text-sm px-3 py-2 border rounded-lg hover:bg-slate-100">Clear Simulated</button>
+            <span id="simIndicator" class="text-xs text-slate-500"></span>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Bottom note moved here -->
+    <div class="max-w-7xl mx-auto text-xs text-slate-500 mt-4">
+      Exchange rate is <b>1 Local → Primary</b>. If you change the primary currency, double-check this.
+    </div>
+  </main>
+
+  <script>
+    // --------------------------
+    // Helpers
+    // --------------------------
+    const $ = sel => document.querySelector(sel);
+    const el = (tag, cls) => { const n = document.createElement(tag); if (cls) n.className = cls; return n; };
+    const nf = (val, currency) => {
+      if (val === null || val === undefined || isNaN(val)) return '—';
+      try {
+        return new Intl.NumberFormat(undefined, { style: 'currency', currency, maximumFractionDigits: 2 }).format(val);
+      } catch {
+        return new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(val) + ' ' + currency;
+      }
+    };
+    const pf = (val) => isFinite(val) ? (val>0?'+':'') + val.toFixed(1) + '%' : '—';
+
+    const today = new Date();
+    function daysInMonth(d) { return new Date(d.getFullYear(), d.getMonth()+1, 0).getDate(); }
+    function remainingDaysInclusive(d) { const dim = daysInMonth(d); return dim - d.getDate() + 1; }
+    function pad2(n){ return String(n).padStart(2,'0'); }
+    function tzSuffixGMT() {
+      const now = new Date();
+      const offsetMin = -now.getTimezoneOffset(); // east positive
+      const sign = offsetMin >= 0 ? '+' : '-';
+      const abs = Math.abs(offsetMin);
+      const h = Math.floor(abs / 60);
+      const m = abs % 60;
+      return 'GMT' + sign + h + (m ? pad2(m) : '');
+    }
+    function exportFilename(primaryCurrency) {
+      const now = new Date();
+      const y = now.getFullYear(), m = pad2(now.getMonth()+1), d = pad2(now.getDate());
+      const hh = pad2(now.getHours()), mm = pad2(now.getMinutes());
+      return `google-campaigns_${primaryCurrency}-${y}${m}${d}-${hh}${mm}${tzSuffixGMT()}`;
+    }
+
+    // --------------------------
+    // Initial Data
+    // --------------------------
+    const STORAGE_KEY = 'ppc_budget_dashboard_v1';
+    const DEFAULT_MARKETS = [
+      { id: 'sg', name: 'Singapore', localCurrency: 'SGD', acronym: 'SG' },
+      { id: 'th', name: 'Thailand',  localCurrency: 'THB', acronym: 'TH' },
+      { id: 'hk', name: 'Hong Kong', localCurrency: 'HKD', acronym: 'HK' },
+      { id: 'au', name: 'Sydney',    localCurrency: 'AUD', acronym: 'AU' },
+    ];
+
+    let state = {
+      primaryCurrency: 'SGD',
+      markets: {
+        sg: { campaigns: [], budgetPrimary: 0, budgetLocal: 0, currentSpendLocal: 0, exchangeRate: 1 },
+        th: { campaigns: [], budgetPrimary: 0, budgetLocal: 0, currentSpendLocal: 0, exchangeRate: 1 },
+        hk: { campaigns: [], budgetPrimary: 0, budgetLocal: 0, currentSpendLocal: 0, exchangeRate: 1 },
+        au: { campaigns: [], budgetPrimary: 0, budgetLocal: 0, currentSpendLocal: 0, exchangeRate: 1 },
+      },
+      activeMarket: 'sg',
+      includeMTDForBudget: true,
+      _schema: 3,
+      _updatedAt: new Date().toISOString()
+    };
+
+    // Load persisted
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+      if (saved && saved.markets && saved.primaryCurrency) state = saved;
+    } catch {}
+
+    // --------------------------
+    // DOM References
+    // --------------------------
+    const primaryCurrencySel = $('#primaryCurrency');
+    const marketTabsNav = $('#marketTabsNav');
+    const marketTitle = $('#marketTitle');
+    const marketCurrency = $('#marketCurrency');
+    const campaignTable = $('#campaignTable');
+    const campaignBody = $('#campaignBody');
+    const addRowBtn = $('#addRowBtn');
+    const simulateBtn = $('#simulateBtn');
+
+    const budgetPrimaryInput = $('#budgetPrimary');
+    const budgetLocalInput   = $('#budgetLocal');
+    const currentSpendInput  = $('#currentSpendLocal');
+    const exchangeRateInput  = $('#exchangeRate');
+    const metricsBox         = $('#metrics');
+    const dateInfo           = $('#dateInfo');
+    const resetBtn           = $('#resetBtn');
+    const toggleIncludeMTD   = $('#toggleIncludeMTD');
+
+    const importBtn = $('#importBtn');
+    const exportBtn = $('#exportBtn');
+    const importInput = $('#importInput');
+
+    const colMiddle  = $('#colMiddle');
+    const colMetrics = $('#colMetrics');
+    const colSim     = $('#colSim');
+    const collapseSimBtn = $('#collapseSimBtn');
+    const clearSimBtn    = $('#clearSimBtn');
+    const simMetricsBox  = $('#simMetrics');
+    const simIndicator   = $('#simIndicator');
+
+    let simExpanded = false;           // simulation side panel expanded
+    let simColumnsVisible = false;     // simulated/on columns visible in table (default hidden)
+
+    // --------------------------
+    // UI Setup
+    // --------------------------
+    primaryCurrencySel.value = state.primaryCurrency;
+    toggleIncludeMTD.checked = !!state.includeMTDForBudget;
+    dateInfo.textContent = (() => {
+      const d = today, rem = remainingDaysInclusive(d), dim = daysInMonth(d);
+      const monthName = d.toLocaleString(undefined, { month: 'long' });
+      return `${monthName} ${d.getFullYear()} • Day ${d.getDate()}/${dim} • ${rem} day(s) left incl. today`;
+    })();
+
+    function persist() {
+      state._updatedAt = new Date().toISOString();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function setActiveTabUI() {
+      marketTabsNav.innerHTML = '';
+      DEFAULT_MARKETS.forEach(m => {
+        const b = el('button', 'px-3 py-2 rounded-lg border text-sm');
+        if (state.activeMarket === m.id) {
+          b.classList.add('bg-slate-900','text-white','border-slate-900');
+        } else {
+          b.classList.add('border-slate-200','text-slate-700','hover:bg-slate-50');
+        }
+        b.textContent = m.acronym;
+        b.title = `${m.name} (${m.localCurrency})`;
+        b.onclick = () => { state.activeMarket = m.id; renderAll(); persist(); };
+        marketTabsNav.appendChild(b);
+      });
+    }
+
+    function renderMarketHeader() {
+      const mdef = DEFAULT_MARKETS.find(m => m.id === state.activeMarket);
+      marketTitle.textContent = mdef.name;
+      marketCurrency.textContent = `Local Currency: ${mdef.localCurrency}`;
+    }
+
+    // ----- Simulation visibility for table columns -----
+    function applySimColumnsVisibility() {
+      const headers = document.querySelectorAll('.th-sim, .th-on');
+      const cells = document.querySelectorAll('.td-sim, .td-on');
+      (simColumnsVisible ? headers.forEach(el=>el.classList.remove('hidden'))
+                         : headers.forEach(el=>el.classList.add('hidden')));
+      (simColumnsVisible ? cells.forEach(el=>el.classList.remove('hidden'))
+                         : cells.forEach(el=>el.classList.add('hidden')));
+      simulateBtn.textContent = simColumnsVisible ? 'Hide Simulate' : 'Simulate';
+    }
+
+    function setSimulationExpanded(expand) {
+      if (expand === simExpanded) return;
+      simExpanded = !!expand;
+      if (simExpanded) {
+        // Middle 7 -> 6
+        colMiddle.classList.remove('lg:col-span-7'); colMiddle.classList.add('lg:col-span-6');
+        // Metrics 3 -> 2
+        colMetrics.classList.remove('lg:col-span-3'); colMetrics.classList.add('lg:col-span-2');
+        // Sim 0 -> 2
+        colSim.classList.remove('lg:col-span-0', 'hidden'); colSim.classList.add('lg:col-span-2');
+      } else {
+        // Revert
+        colMiddle.classList.remove('lg:col-span-6'); colMiddle.classList.add('lg:col-span-7');
+        colMetrics.classList.remove('lg:col-span-2'); colMetrics.classList.add('lg:col-span-3');
+        colSim.classList.remove('lg:col-span-2'); colSim.classList.add('lg:col-span-0', 'hidden');
+      }
+    }
+
+    // ----- Campaign table -----
+    function addCampaignRow(row={name:'', daily:'', simDaily:'', includeSim:true}) {
+      const tr = el('tr', 'border-b');
+      const nameTd = el('td','py-2 pr-2');
+      const spendTd = el('td','py-2 pr-2');
+      const simTd   = el('td','py-2 pr-2 td-sim hidden');
+      const onTd    = el('td','py-2 pr-2 td-on hidden');
+      const actionTd = el('td','py-2');
+
+      const nameInput = el('input','w-full px-3 py-2 border rounded-lg');
+      nameInput.placeholder = 'Campaign name';
+      nameInput.value = row.name || '';
+      nameInput.oninput = () => { row.name = nameInput.value; persist(); };
+
+      const dailyInput = el('input','w-full px-3 py-2 border rounded-lg number-input');
+      dailyInput.type = 'number'; dailyInput.inputMode = 'decimal'; dailyInput.placeholder = '0.00';
+      dailyInput.value = row.daily !== '' && row.daily !== undefined ? row.daily : '';
+      dailyInput.oninput = () => {
+        const v = parseFloat(dailyInput.value);
+        row.daily = isNaN(v) ? 0 : v;
+        computeAndRenderAllMetrics();
+        persist();
+      };
+
+      const simInput = el('input','w-full px-3 py-2 border rounded-lg number-input');
+      simInput.type = 'number'; simInput.inputMode = 'decimal'; // no placeholder per request
+      simInput.value = (row.simDaily !== undefined && row.simDaily !== '') ? row.simDaily : '';
+      simInput.oninput = () => {
+        const val = simInput.value;
+        if (val === '') { row.simDaily = ''; } else { const v = parseFloat(val); row.simDaily = isNaN(v) ? '' : v; }
+        if (!simExpanded) setSimulationExpanded(true);
+        computeAndRenderAllMetrics();
+        persist();
+      };
+
+      const onChk = el('input','h-5 w-5');
+      onChk.type = 'checkbox'; onChk.checked = (row.includeSim !== false);
+      onChk.onchange = () => {
+        row.includeSim = !!onChk.checked;
+        if (!simExpanded) setSimulationExpanded(true);
+        computeAndRenderAllMetrics();
+        persist();
+      };
+
+      const delBtn = el('button','px-2 py-2 text-slate-500 hover:text-red-600');
+      delBtn.title = 'Remove row'; delBtn.textContent = '🗑';
+      delBtn.onclick = () => {
+        const arr = state.markets[state.activeMarket].campaigns;
+        const idx = arr.indexOf(row);
+        if (idx > -1) arr.splice(idx,1);
+        renderCampaignTable();
+        computeAndRenderAllMetrics();
+        persist();
+      };
+
+      nameTd.appendChild(nameInput);
+      spendTd.appendChild(dailyInput);
+      simTd.appendChild(simInput);
+      onTd.appendChild(onChk);
+      actionTd.appendChild(delBtn);
+
+      tr.appendChild(nameTd);
+      tr.appendChild(spendTd);
+      tr.appendChild(simTd);
+      tr.appendChild(onTd);
+      tr.appendChild(actionTd);
+
+      campaignBody.appendChild(tr);
+    }
+
+    function renderCampaignTable() {
+      campaignBody.innerHTML = '';
+      const m = state.markets[state.activeMarket];
+      if (!m.campaigns.length) {
+        m.campaigns.push({name:'', daily:0, simDaily:'', includeSim:true});
+      }
+      m.campaigns.forEach(r => {
+        if (r.simDaily === undefined) r.simDaily = '';
+        if (typeof r.includeSim === 'undefined') r.includeSim = true;
+        addCampaignRow(r);
+      });
+      applySimColumnsVisibility();
+    }
+
+    // ----- Right inputs -----
+    function wireRightInputs() {
+      const m = state.markets[state.activeMarket];
+      budgetPrimaryInput.value = m.budgetPrimary || '';
+      budgetLocalInput.value   = m.budgetLocal   || '';
+      currentSpendInput.value  = m.currentSpendLocal || '';
+      exchangeRateInput.value  = m.exchangeRate || '';
+
+      let editingLock = false;
+
+      budgetPrimaryInput.oninput = () => {
+        const v = parseFloat(budgetPrimaryInput.value);
+        m.budgetPrimary = isNaN(v) ? 0 : v;
+        const r = parseFloat(exchangeRateInput.value);
+        if (!editingLock && r > 0) {
+          editingLock = true;
+          m.budgetLocal = m.budgetPrimary / r;
+          budgetLocalInput.value = m.budgetLocal || '';
+          editingLock = false;
+        }
+        computeAndRenderAllMetrics();
+        persist();
+      };
+      budgetLocalInput.oninput = () => {
+        const v = parseFloat(budgetLocalInput.value);
+        m.budgetLocal = isNaN(v) ? 0 : v;
+        const r = parseFloat(exchangeRateInput.value);
+        if (!editingLock && r > 0) {
+          editingLock = true;
+          m.budgetPrimary = m.budgetLocal * r;
+          budgetPrimaryInput.value = m.budgetPrimary || '';
+          editingLock = false;
+        }
+        computeAndRenderAllMetrics();
+        persist();
+      };
+      currentSpendInput.oninput = () => {
+        const v = parseFloat(currentSpendInput.value);
+        m.currentSpendLocal = isNaN(v) ? 0 : v;
+        computeAndRenderAllMetrics();
+        persist();
+      };
+      exchangeRateInput.oninput = () => {
+        const v = parseFloat(exchangeRateInput.value);
+        m.exchangeRate = (isNaN(v) || v <= 0) ? 1 : v;
+        const r = m.exchangeRate;
+        if (!editingLock && r > 0) {
+          editingLock = true;
+          if (document.activeElement === budgetLocalInput) {
+            m.budgetPrimary = m.budgetLocal * r;
+            budgetPrimaryInput.value = m.budgetPrimary || '';
+          } else {
+            m.budgetLocal = m.budgetPrimary / r;
+            budgetLocalInput.value = m.budgetLocal || '';
+          }
+          editingLock = false;
+        }
+        computeAndRenderAllMetrics();
+        persist();
+      };
+    }
+
+    // ----- Metrics -----
+    function renderMetricsInto(container, {
+      dailyLocal, dailyPrimary, remDays,
+      futureLocal, futurePrimary,
+      projectedMonthLocal, projectedMonthPrimary,
+      percentFromBudget, requiredDailyPrimary, percentChangeNeeded
+    }, localCcy, primaryCcy, useProjectedFlagText) {
+      container.innerHTML = `
+        <div class="p-3 bg-slate-50 rounded-lg">
+          <div class="text-slate-500 text-xs mb-1">Total Current Daily Spend</div>
+          <div class="text-sm">
+            ${nf(dailyLocal, localCcy)} <span class="text-xs text-slate-500">(${localCcy})</span>
+            <span class="text-slate-400"> • </span>
+            ≈ ${nf(dailyPrimary, primaryCcy)} <span class="text-xs text-slate-500">(${primaryCcy})</span>
+          </div>
+        </div>
+
+        <div class="p-3 bg-slate-50 rounded-lg">
+          <div class="text-slate-500 text-xs mb-1">Remaining Days (incl. today)</div>
+          <div class="text-base">${remDays}</div>
+        </div>
+
+        <div class="p-3 bg-slate-50 rounded-lg">
+          <div class="text-slate-500 text-xs mb-1">Extrapolated Future Spend to Month-End</div>
+          <div class="text-sm">
+            ${nf(futureLocal, localCcy)} <span class="text-xs text-slate-500">(${localCcy})</span>
+            <span class="text-slate-400"> • </span>
+            ≈ ${nf(futurePrimary, primaryCcy)} <span class="text-xs text-slate-500">(${primaryCcy})</span>
+          </div>
+        </div>
+
+        <div class="p-3 bg-slate-50 rounded-lg">
+          <div class="text-slate-500 text-xs mb-1">Projected Month Total ${useProjectedFlagText}</div>
+          <div class="text-sm">
+            ${nf(projectedMonthLocal, localCcy)} <span class="text-xs text-slate-500">(${localCcy})</span>
+            <span class="text-slate-400"> • </span>
+            ≈ ${nf(projectedMonthPrimary, primaryCcy)} <span class="text-xs text-slate-500">(${primaryCcy})</span>
+          </div>
+        </div>
+
+        <div class="p-3 bg-slate-50 rounded-lg">
+          <div class="text-slate-500 text-xs mb-1">% from Target Budget (Primary)</div>
+          <div class="text-base ${percentFromBudget>0?'text-rose-600':(percentFromBudget<0?'text-emerald-600':'text-slate-700')}">
+            ${pf(percentFromBudget)}
+          </div>
+        </div>
+
+        <div class="p-3 bg-slate-50 rounded-lg">
+          <div class="text-slate-500 text-xs mb-1">Required Daily Spend to Hit Budget (Primary)</div>
+          <div class="text-sm">${isFinite(requiredDailyPrimary) ? nf(requiredDailyPrimary, primaryCcy) : '—'}</div>
+          <div class="text-xs text-slate-500 mt-1">Change vs current daily: ${pf(percentChangeNeeded)}</div>
+          <div class="mt-1 text-sm font-medium">${
+            isFinite(percentChangeNeeded)
+              ? (percentChangeNeeded > 1
+                  ? `Increase daily spend by ${percentChangeNeeded.toFixed(1)}%`
+                  : (percentChangeNeeded < -1
+                      ? `Decrease daily spend by ${Math.abs(percentChangeNeeded).toFixed(1)}%`
+                      : `On track — minor adjustments`))
+              : `Set budget, MTD & rate to get guidance`
+          }</div>
+        </div>
+      `;
+    }
+
+    function computeMetrics(dailyLocal, rate, remDays, currentMTDLocal, targetPrimary, includeMTD) {
+      const dailyPrimary = dailyLocal * rate;
+      const futureLocal = dailyLocal * remDays;
+      const futurePrimary = futureLocal * rate;
+
+      const projectedMonthLocal = currentMTDLocal + futureLocal;
+      const projectedMonthPrimary = projectedMonthLocal * rate;
+
+      const basisPrimary = includeMTD ? projectedMonthPrimary : futurePrimary;
+      const percentFromBudget = (targetPrimary > 0) ? ((basisPrimary - targetPrimary) / targetPrimary) * 100 : NaN;
+
+      const currentMTDPrimary = currentMTDLocal * rate;
+      let requiredDailyPrimary = NaN;
+      if (remDays > 0) requiredDailyPrimary = (targetPrimary - currentMTDPrimary) / remDays;
+
+      const percentChangeNeeded = (isFinite(requiredDailyPrimary) && dailyPrimary > 0)
+        ? ((requiredDailyPrimary - dailyPrimary) / dailyPrimary) * 100
+        : NaN;
+
+      return {
+        dailyLocal, dailyPrimary, remDays,
+        futureLocal, futurePrimary,
+        projectedMonthLocal, projectedMonthPrimary,
+        percentFromBudget, requiredDailyPrimary, percentChangeNeeded
+      };
+    }
+
+    function computeAndRenderAllMetrics() {
+      const mdef = DEFAULT_MARKETS.find(m => m.id === state.activeMarket);
+      const localCcy = mdef.localCurrency;
+      const primaryCcy = state.primaryCurrency;
+      const m = state.markets[state.activeMarket];
+
+      const rate = (m.exchangeRate && m.exchangeRate > 0) ? m.exchangeRate : 1;
+      const remDays = remainingDaysInclusive(today);
+      const currentMTDLocal = parseFloat(m.currentSpendLocal) || 0;
+      const targetPrimary = parseFloat(m.budgetPrimary) || 0;
+      const includeMTD = !!state.includeMTDForBudget;
+
+      // Live daily
+      const dailyLocal = (m.campaigns || []).reduce((sum, r) => sum + (parseFloat(r.daily)||0), 0);
+      const liveMetrics = computeMetrics(dailyLocal, rate, remDays, currentMTDLocal, targetPrimary, includeMTD);
+      renderMetricsInto(metricsBox, liveMetrics, localCcy, primaryCcy, includeMTD ? '(used in calc)' : '');
+
+      // Simulation: include if checked; use simDaily if present, else daily
+      const simDailyLocal = (m.campaigns || []).reduce((sum, r) => {
+        if (r.includeSim === false) return sum;
+        const hasSim = (r.simDaily !== undefined && r.simDaily !== '');
+        const val = hasSim ? (parseFloat(r.simDaily)||0) : (parseFloat(r.daily)||0);
+        return sum + val;
+      }, 0);
+
+      const simActive = (m.campaigns || []).some(r => r.includeSim === false || (r.simDaily !== undefined && r.simDaily !== ''));
+      simIndicator.textContent = simActive ? `Simulation active` : `Simulation inactive`;
+
+      if ((simExpanded || simActive) && simColumnsVisible) {
+        if (!simExpanded && simActive) setSimulationExpanded(true);
+        const simMetrics = computeMetrics(simDailyLocal, rate, remDays, currentMTDLocal, targetPrimary, includeMTD);
+        renderMetricsInto(simMetricsBox, simMetrics, localCcy, primaryCcy, includeMTD ? '(used in calc)' : '');
+      }
+    }
+
+    function renderAll() {
+      primaryCurrencySel.value = state.primaryCurrency;
+      setActiveTabUI();
+      renderMarketHeader();
+      renderCampaignTable();
+      wireRightInputs();
+      setSimulationExpanded(false); // start collapsed; user reveals via interactions
+      computeAndRenderAllMetrics();
+    }
+
+    // --------------------------
+    // Import / Export
+    // --------------------------
+    function getExportObject() {
+      return {
+        _schema: 3,
+        _exportedAt: new Date().toISOString(),
+        primaryCurrency: state.primaryCurrency,
+        markets: state.markets,
+        activeMarket: state.activeMarket,
+        includeMTDForBudget: state.includeMTDForBudget
+      };
+    }
+
+    function downloadJSON(obj, filename) {
+      const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename.endsWith('.json') ? filename : filename + '.json';
+      document.body.appendChild(a);
+      a.click();
+      URL.revokeObjectURL(a.href);
+      a.remove();
+    }
+
+    importBtn.onclick = () => importInput.click();
+    importInput.onchange = async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        if (!data || !data.markets || !data.primaryCurrency) throw new Error('Invalid file structure.');
+        state.primaryCurrency = data.primaryCurrency;
+        state.markets = data.markets;
+        state.activeMarket = data.activeMarket || 'sg';
+        state.includeMTDForBudget = !!data.includeMTDForBudget;
+        persist();
+        renderAll();
+        alert('Import successful. Data loaded.');
+      } catch (err) {
+        console.error(err);
+        alert('Import failed: ' + err.message);
+      } finally {
+        e.target.value = ''; // reset input
+      }
+    };
+
+    exportBtn.onclick = () => {
+      const fname = exportFilename(state.primaryCurrency);
+      downloadJSON(getExportObject(), fname);
+    };
+
+    // --------------------------
+    // Events
+    // --------------------------
+    addRowBtn.onclick = () => {
+      state.markets[state.activeMarket].campaigns.push({name:'', daily:0, simDaily:'', includeSim:true});
+      renderCampaignTable();
+      computeAndRenderAllMetrics();
+      persist();
+    };
+
+    simulateBtn.onclick = () => {
+      simColumnsVisible = !simColumnsVisible;
+      applySimColumnsVisibility();
+      // don't auto-open side panel until the user actually interacts with sim values/checkboxes
+    };
+
+    primaryCurrencySel.onchange = () => {
+      state.primaryCurrency = primaryCurrencySel.value;
+      computeAndRenderAllMetrics();
+      persist();
+    };
+
+    resetBtn.onclick = () => {
+      if (!confirm('Reset all data for this dashboard?')) return;
+      localStorage.removeItem(STORAGE_KEY);
+      state = {
+        primaryCurrency: 'SGD',
+        markets: {
+          sg: { campaigns: [], budgetPrimary: 0, budgetLocal: 0, currentSpendLocal: 0, exchangeRate: 1 },
+          th: { campaigns: [], budgetPrimary: 0, budgetLocal: 0, currentSpendLocal: 0, exchangeRate: 1 },
+          hk: { campaigns: [], budgetPrimary: 0, budgetLocal: 0, currentSpendLocal: 0, exchangeRate: 1 },
+          au: { campaigns: [], budgetPrimary: 0, budgetLocal: 0, currentSpendLocal: 0, exchangeRate: 1 },
+        },
+        activeMarket: 'sg',
+        includeMTDForBudget: true,
+        _schema: 3,
+        _updatedAt: new Date().toISOString()
+      };
+      setSimulationExpanded(false);
+      renderAll();
+    };
+
+    toggleIncludeMTD.onchange = () => {
+      state.includeMTDForBudget = toggleIncludeMTD.checked;
+      computeAndRenderAllMetrics();
+      persist();
+    };
+
+    collapseSimBtn.onclick = () => setSimulationExpanded(false);
+
+    clearSimBtn.onclick = () => {
+      const arr = state.markets[state.activeMarket].campaigns || [];
+      arr.forEach(r => { r.simDaily = ''; r.includeSim = true; });
+      setSimulationExpanded(false);
+      computeAndRenderAllMetrics();
+      renderCampaignTable(); // refresh inputs/checkboxes visually
+      persist();
+    };
+
+    // --------------------------
+    // Boot
+    // --------------------------
+    renderAll();
+  </script>
+</body>
+</html>
