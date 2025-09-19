@@ -41,7 +41,7 @@
     .row{ display:grid; grid-template-columns: 1fr; gap: 12px; }
     @media (min-width: 640px){ .row{ grid-template-columns: 1fr auto; align-items:center; } }
 
-    input[type="text"], input[type="url"], textarea{ width:100%; box-sizing:border-box; background: #fff; color: var(--text); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; outline: none; transition:.15s border-color ease, .15s box-shadow ease; }
+    input[type="text"], input[type="url"], textarea, select{ width:100%; box-sizing:border-box; background: #fff; color: var(--text); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; outline: none; transition:.15s border-color ease, .15s box-shadow ease; }
     input::placeholder, textarea::placeholder{ color: #98a2b3; }
     input:focus, textarea:focus{ border-color: #b4c3e2; box-shadow: 0 0 0 6px rgba(59,130,246,.15); }
 
@@ -151,6 +151,20 @@
       </div>
       <div class="footer-note">This tool composes a query string using your property names. HubSpot forms will auto-prefill matching fields when the page loads with those parameters.</div>
     </section>
+
+    <section class="card stack" id="importCard">
+      <details id="importPanel">
+        <summary>Edit an existing Prefill URL</summary>
+        <div>
+          <label for="importUrl">Paste a prefilled URL to edit</label>
+          <textarea id="importUrl" rows="3" placeholder="https://yourdomain.com/page?email=jane%40example.com&preferred_city=Sydney&utm_campaign=q4_launch"></textarea>
+        </div>
+        <div class="controls">
+          <button class="btn primary" id="importBtn">Edit</button>
+        </div>
+        <div class="tiny">Press <b>Edit</b> to replace the current fields with values from the URL above.</div>
+      </details>
+    </section>
   </div>
 
   <script>
@@ -168,6 +182,83 @@
     const openBtn = qs('#openBtn');
     const paramCountEl = qs('#paramCount');
 
+    // Hardcoded enum fields (rendered as dropdowns when property matches)
+    const ENUM_FIELDS = {
+      preferred_city: [
+        "Singapore",
+        "Bangkok",
+        "Sydney",
+        "Hong Kong"
+      ],
+      location: [
+        "85 Castlereagh Street",
+        "Afro Asia",
+        "Centennial Tower",
+        "Gaysorn Tower",
+        "Greater",
+        "Ngee Ann City",
+        "One George Street",
+        "One Taikoo Place",
+        "Park Silom",
+        "Raffles Arcade",
+        "South Bridge",
+        "Paya Lebar Quarter",
+        "Stamford Place",
+        "Shaw Tower",
+        "One O’Connell"
+      ],
+      membership_type_interested: [
+        "Day Pass",
+        "Dedicated Office",
+        "Hot Desk",
+        "Virtual Office",
+        "Business Club Membership",
+        "Events and Meetings",
+        "General Enquiries",
+        "Office Space",
+        "Partners & Sponsors",
+        "Developers & Investors",
+        "Greater"
+      ]
+    };
+
+    function isEnumField(name){ return Object.prototype.hasOwnProperty.call(ENUM_FIELDS, (name||'').trim()); }
+
+    function enumOptionsHtml(name, currentVal){
+      const opts = ENUM_FIELDS[name] || [];
+      const first = currentVal ? '' : `<option value="" disabled selected hidden>Select…</option>`;
+      const items = opts.map(v => `<option value="${escapeHtml(v)}"${currentVal===v ? ' selected' : ''}>${escapeHtml(v)}</option>`).join('');
+      return first + items;
+    }
+
+    function valueControlHtml(valId, prop, val){
+      if (isEnumField(prop)){
+        return `<select id="${valId}" class="val">${enumOptionsHtml(prop, val)}</select>`;
+      }
+      return `<input id="${valId}" class="val" type="text" placeholder="e.g., clara@company.com" value="${escapeHtml(val || '')}" />`;
+    }
+
+    function swapValueControlIfNeeded(row){
+      const prop = (row.querySelector('.prop')?.value || '').trim();
+      const valEl = row.querySelector('.val');
+      if (!valEl) return;
+      const currentVal = valEl.value || '';
+      const valId = valEl.id || `val_${Math.random().toString(36).slice(2,8)}`;
+      const valCol = row.children[1];
+      const desiredIsSelect = isEnumField(prop);
+      const isSelect = valEl.tagName === 'SELECT';
+      if (desiredIsSelect !== isSelect){
+        valCol.innerHTML = `<label for="${valId}">Prefill value</label>` + valueControlHtml(valId, prop, currentVal);
+        const newEl = valCol.querySelector('.val');
+        newEl.addEventListener('input', schedulePreview);
+        newEl.addEventListener('change', schedulePreview);
+      }
+    }
+
+    // Import/edit panel controls
+    const importBtn = document.getElementById('importBtn');
+    const importUrlInput = document.getElementById('importUrl');
+
     const utmIds = ['utm_source','utm_medium','utm_campaign','utm_term','utm_content'];
 
     function createFieldRow(prop = '', val = ''){
@@ -183,7 +274,7 @@
         </div>
         <div>
           <label for="${valId}">Prefill value</label>
-          <input id="${valId}" class="val" type="text" placeholder="e.g., clara@company.com" value="${escapeHtml(val)}" />
+          ${valueControlHtml(valId, prop, val)}
         </div>
         <div class="remove-col">
           <label>&nbsp;</label>
@@ -193,9 +284,10 @@
 
       fieldsGrid.appendChild(row);
 
-      const inputs = row.querySelectorAll('input');
-      inputs.forEach(i => i.addEventListener('input', schedulePreview));
+      const inputs = row.querySelectorAll('input, select');
+      inputs.forEach(i => { i.addEventListener('input', schedulePreview); i.addEventListener('change', schedulePreview); });
       row.querySelector('.remove').addEventListener('click', (e) => { e.preventDefault(); removeRow(row); });
+      row.querySelector('.prop').addEventListener('input', () => swapValueControlIfNeeded(row));
     }
 
     function removeRow(row){
@@ -224,6 +316,34 @@
         if (v) o[id] = v;
       });
       return o;
+    }
+
+    // Parse an existing prefill URL and populate the UI
+    function parsePrefillUrl(uStr){
+      let u = (uStr || '').trim();
+      if (!u) return null;
+      try{ return new URL(u); }catch(_){ try{ return new URL('https://' + u); }catch(__){ return null; } }
+    }
+
+    function importFromUrl(){
+      const raw = (importUrlInput?.value || '').trim();
+      const u = parsePrefillUrl(raw);
+      if (!u){ toast('Invalid URL', 'warn'); return; }
+      // Base URL is origin + pathname
+      baseUrlInput.value = u.origin + u.pathname;
+
+      // Set UTM values
+      utmIds.forEach(id => { const val = u.searchParams.get(id) || ''; const el = qs('#' + id); if (el) el.value = val; });
+
+      // Rebuild field rows with non-UTM params
+      fieldsGrid.innerHTML = '';
+      const utmSet = new Set(utmIds);
+      for (const [k, v] of u.searchParams.entries()){
+        if (utmSet.has(k)) continue;
+        createFieldRow(k, v);
+      }
+      schedulePreview();
+      toast('Fields loaded');
     }
 
     function normalizeBaseUrl(url){
@@ -278,7 +398,7 @@
 
     function copyToClipboard(){
       const v = resultInput.value;
-      if (!v){ toast('Nothing to copy', 'warn'); return; }
+      if (!v){ return; } // be quiet when empty
       navigator.clipboard.writeText(v).then(() => toast('Copied!')).catch(() => {
         resultInput.select();
         document.execCommand('copy');
@@ -324,10 +444,65 @@
 
     genBtn.addEventListener('click', (e)=>{ e.preventDefault(); updatePreview(); if(resultInput.value) toast('URL generated'); });
     copyBtn.addEventListener('click', (e)=>{ e.preventDefault(); copyToClipboard(); });
+    if (importBtn) importBtn.addEventListener('click', (e)=>{ e.preventDefault(); importFromUrl(); });
 
     // Boot
-    ['preferred_city','location','membership_type_interested_'].forEach((p,i)=> createFieldRow(p, i===0 ? 'Singapore' : ''));
+    ['email','firstname','company'].forEach((p,i)=> createFieldRow(p, i===0 ? 'jane@example.com' : ''));
+    // Add enum rows by default (removable)
+    ['preferred_city','location','membership_type_interested'].forEach((p)=> createFieldRow(p, ''));
     schedulePreview();
+
+    /* ----------------------
+       Minimal console tests
+       ----------------------
+       Run in DevTools: window.__prefillTests.run()
+    */
+    window.__prefillTests = {
+      run(){
+        const results = [];
+        const log = (name, ok, err) => { results.push({name, ok, err}); console[ok? 'log' : 'error'](`${ok?'✔':'✘'} ${name}` + (err? ` → ${err}`:'')); };
+        const countRows = () => document.querySelectorAll('#fieldsGrid .row-grid').length;
+        try {
+          // 1) Starts with some rows
+          log('initial rows ≥ 3', countRows() >= 3);
+
+          // 2) Add field
+          const before = countRows();
+          addFieldRow();
+          log('add field increases count', countRows() === before + 1);
+
+          // 3) Enum becomes select
+          const tmp = document.createElement('div');
+          fieldsGrid.appendChild(tmp);
+          tmp.remove(); // noop to keep DOM stable
+          createFieldRow('preferred_city','Sydney');
+          const last = fieldsGrid.lastElementChild;
+          const isSelect = last.querySelector('.val')?.tagName === 'SELECT';
+          log('preferred_city renders as <select>', !!isSelect);
+          last.remove();
+
+          // 4) URL build merges UTM + params
+          baseUrlInput.value = 'https://example.com/landing';
+          qs('#utm_source').value = 'testsource';
+          fieldsGrid.innerHTML = '';
+          createFieldRow('email','test@example.com');
+          const { url } = buildUrl();
+          log('buildUrl contains utm_source', url.includes('utm_source=testsource'));
+          log('buildUrl contains custom param', url.includes('email=test%40example.com'));
+
+          // 5) Import parser
+          importUrlInput.value = 'https://foo.bar/x?utm_campaign=sale&email=zoe%40acme.com&preferred_city=Sydney';
+          importFromUrl();
+          const hasEmail = Array.from(document.querySelectorAll('.prop')).some(i=>i.value==='email');
+          log('import sets base url', baseUrlInput.value === 'https://foo.bar/x');
+          log('import populates utm_campaign', qs('#utm_campaign').value === 'sale');
+          log('import creates email field', hasEmail);
+        } catch (e) {
+          console.error('Test harness error', e);
+        }
+        return results;
+      }
+    };
   </script>
 </body>
 </html>
