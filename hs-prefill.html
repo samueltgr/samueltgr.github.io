@@ -6,61 +6,64 @@
   <title>HubSpot Prefill URL Builder</title>
   <style>
     :root{
-      --bg: #0b0d10;
-      --card: #11141a;
-      --muted: #8b96a7;
-      --text: #e8edf5;
-      --accent: #6ee7ff;
-      --accent-2: #9b87f5;
-      --border: #1f2530;
-      --good: #34d399;
+      --bg: #f7f9fc;
+      --card: #ffffff;
+      --muted: #5b6b7f;
+      --text: #0b0d10;
+      --accent: #3b82f6;
+      --accent-2: #22d3ee;
+      --border: #d5dbe7;
+      --good: #10b981;
       --warn: #f59e0b;
       --danger: #ef4444;
-      --shadow: 0 8px 30px rgba(0,0,0,.35);
+      --shadow: 0 8px 30px rgba(16, 24, 40, .08);
       --radius: 16px;
     }
     html, body { height: 100%; }
     body{
       margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-      background: radial-gradient(1000px 600px at 10% -10%, rgba(155,135,245,.15), transparent 50%),
-                  radial-gradient(1000px 600px at 100% 0%, rgba(110,231,255,.12), transparent 50%),
-                  var(--bg);
+      background:
+        radial-gradient(1000px 600px at 10% -10%, rgba(59,130,246,.08), transparent 50%),
+        radial-gradient(1000px 600px at 100% 0%, rgba(34,211,238,.08), transparent 50%),
+        var(--bg);
       color: var(--text);
     }
     .wrap{ max-width: 1000px; margin: 40px auto; padding: 0 16px 48px; }
     header{ display:flex; align-items: center; gap: 16px; margin-bottom: 16px; }
-    .logo{ width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, var(--accent), var(--accent-2)); box-shadow: var(--shadow); display:grid; place-items:center; font-weight: 900; color:#0b0d10; }
+    .logo{ width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, var(--accent), var(--accent-2)); box-shadow: var(--shadow); display:grid; place-items:center; font-weight: 900; color:#fff; }
     h1{ font-size: clamp(22px, 3.2vw, 30px); margin: 0; letter-spacing: .2px; }
     p.sub{ margin: 2px 0 0; color: var(--muted); font-size: 14px; }
 
-    .card{ background: linear-gradient(180deg, rgba(255,255,255,.02), transparent), var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; }
+    .card{ background: linear-gradient(180deg, rgba(255,255,255,1), rgba(255,255,255,.98)); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; }
     .stack{ display: grid; gap: 16px; }
 
     label{ font-size: 13px; color: var(--muted); display:block; margin: 0 0 6px; }
     .row{ display:grid; grid-template-columns: 1fr; gap: 12px; }
     @media (min-width: 640px){ .row{ grid-template-columns: 1fr auto; align-items:center; } }
 
-    input[type="text"], input[type="url"], textarea{ width:100%; box-sizing:border-box; background: #0d1117; color: var(--text); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; outline: none; transition:.15s border-color ease, .15s box-shadow ease; }
-    input::placeholder, textarea::placeholder{ color: #586276; }
-    input:focus, textarea:focus{ border-color: #2c3443; box-shadow: 0 0 0 6px rgba(110,231,255,.06); }
+    input[type="text"], input[type="url"], textarea{ width:100%; box-sizing:border-box; background: #fff; color: var(--text); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; outline: none; transition:.15s border-color ease, .15s box-shadow ease; }
+    input::placeholder, textarea::placeholder{ color: #98a2b3; }
+    input:focus, textarea:focus{ border-color: #b4c3e2; box-shadow: 0 0 0 6px rgba(59,130,246,.15); }
 
     .controls{ display:flex; flex-wrap: wrap; gap: 10px; }
-    .btn{ appearance: none; border: 1px solid var(--border); background: #121722; color: var(--text); padding: 10px 14px; border-radius: 12px; font-weight: 600; cursor:pointer; transition: .15s transform ease, .15s background ease, .15s border-color ease; }
-    .btn:hover{ transform: translateY(-1px); border-color: #2c3443; background: #0f1420; }
+    .btn{ appearance: none; border: 1px solid var(--border); background: #ffffff; color: var(--text); padding: 10px 14px; border-radius: 12px; font-weight: 600; cursor:pointer; transition: .15s transform ease, .15s background ease, .15s border-color ease; }
+    .btn:hover{ transform: translateY(-1px); border-color: #b4c3e2; background: #f6f8fb; }
     .btn:active{ transform: translateY(0); }
-    .btn.primary{ background: linear-gradient(180deg, rgba(110,231,255,.12), rgba(110,231,255,.08)); border-color: #2c3443; }
-    .btn.good{ background: linear-gradient(180deg, rgba(52,211,153,.16), rgba(52,211,153,.08)); border-color: rgba(52,211,153,.35); }
+    .btn.primary{ background: linear-gradient(180deg, rgba(59,130,246,.12), rgba(59,130,246,.06)); border-color: #b4c3e2; }
+    .btn.good{ background: linear-gradient(180deg, rgba(16,185,129,.14), rgba(16,185,129,.08)); border-color: rgba(16,185,129,.35); }
     .btn.danger{ background: linear-gradient(180deg, rgba(239,68,68,.12), rgba(239,68,68,.08)); border-color: rgba(239,68,68,.35); }
 
-    .two-col{ display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .field-row{ display: contents; }
+    /* Field rows */
+    #fieldsGrid{ display: grid; gap: 10px; }
+    .row-grid{ display:grid; grid-template-columns: 1fr; gap: 12px; align-items:end; }
+    @media (min-width: 640px){ .row-grid{ grid-template-columns: 1fr 1fr auto; } }
 
-    .value-wrap{ position: relative; }
-    .remove{ position: absolute; right: 8px; top: 50%; transform: translateY(-50%); border: none; background: #202838; color: #cbd5e1; width: 28px; height: 28px; border-radius: 8px; cursor: pointer; transition: .15s background ease, .15s transform ease; }
-    .remove:hover{ background:#2a3550; transform: translateY(-50%) scale(1.06); }
-    .remove:active{ transform: translateY(-50%) scale(1.0); }
+    .remove-col{ display:flex; justify-content:flex-end; align-items:end; }
+    .remove{ border: 1px solid var(--border); background: #fff; color: #475569; width: 36px; height: 36px; border-radius: 10px; cursor: pointer; transition: .15s background ease, .15s transform ease, .15s border-color ease; }
+    .remove:hover{ background:#f6f8fb; transform: scale(1.04); border-color:#b4c3e2; }
+    .remove:active{ transform: scale(1.0); }
 
-    details{ border: 1px dashed #273043; border-radius: 12px; padding: 10px 12px; background: #0d1117; }
+    details{ border: 1px dashed #d6d9e6; border-radius: 12px; padding: 10px 12px; background: #f8fafc; }
     details > summary{ cursor: pointer; list-style: none; font-weight: 700; display:flex; align-items:center; gap:8px; }
     details > summary::before{ content: '▸'; transition: .15s transform ease; color: var(--muted); }
     details[open] > summary::before{ transform: rotate(90deg); }
@@ -70,10 +73,10 @@
     .out{ display:grid; gap: 8px; }
     .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 13px; }
     .tiny{ color: var(--muted); font-size: 12px; }
-    .pill{ display:inline-flex; align-items:center; gap:6px; padding: 6px 10px; border-radius: 999px; border: 1px solid #22314a; background: #101826; font-size: 12px; }
+    .pill{ display:inline-flex; align-items:center; gap:6px; padding: 6px 10px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-size: 12px; }
     .stat{ display:flex; align-items:center; gap:8px; color: var(--muted); font-size:12px; }
     .stat b{ color: var(--text); }
-    .divider{ height:1px; background: linear-gradient(90deg, transparent, #233044, transparent); margin: 6px 0 2px; }
+    .divider{ height:1px; background: linear-gradient(90deg, transparent, #e6eaf2, transparent); margin: 6px 0 2px; }
     .footer-note{ margin-top: 10px; color: var(--muted); font-size: 12px; }
     .help{ color: var(--muted); font-size:12px; }
   </style>
@@ -171,6 +174,30 @@
       const propId = `prop_${Math.random().toString(36).slice(2,8)}`;
       const valId = `val_${Math.random().toString(36).slice(2,8)}`;
 
+      const row = document.createElement('div');
+      row.className = 'row-grid';
+      row.innerHTML = `
+        <div>
+          <label for="${propId}">Property name</label>
+          <input id="${propId}" class="prop mono" type="text" placeholder="e.g., email" value="${escapeHtml(prop)}" />
+        </div>
+        <div>
+          <label for="${valId}">Prefill value</label>
+          <input id="${valId}" class="val" type="text" placeholder="e.g., clara@company.com" value="${escapeHtml(val)}" />
+        </div>
+        <div class="remove-col">
+          <label>&nbsp;</label>
+          <button class="remove" title="Remove row" aria-label="Remove row">×</button>
+        </div>`;
+
+      fieldsGrid.appendChild(row);
+
+      const inputs = row.querySelectorAll('input');
+      inputs.forEach(i => i.addEventListener('input', schedulePreview));
+      row.querySelector('.remove').addEventListener('click', (e) => { e.preventDefault(); removeRow(row); });
+    }`;
+      const valId = `val_${Math.random().toString(36).slice(2,8)}`;
+
       const frag = document.createDocumentFragment();
 
       const propWrap = document.createElement('div');
@@ -200,17 +227,24 @@
       valWrap.querySelector('.remove').addEventListener('click', (e) => { e.preventDefault(); removeRow(valWrap); });
     }
 
-    function removeRow(valWrap){
-      // Remove the two elements that make up this row (prop and value)
-      const valueIndex = Array.from(fieldsGrid.children).indexOf(valWrap);
-      const propIndex = valueIndex - 1;
-      if (propIndex >= 0) fieldsGrid.children[propIndex].remove();
-      valWrap.remove();
+    function removeRow(row){
+      row.remove();
       schedulePreview();
     }
 
     function getCustomParams(){
       const params = {};
+      const pairs = [];
+      const rows = Array.from(fieldsGrid.querySelectorAll('.row-grid'));
+      for (const r of rows){
+        const prop = (r.querySelector('.prop')?.value || '').trim();
+        const val = (r.querySelector('.val')?.value || '').trim();
+        if (!prop || !val) continue;
+        params[prop] = val;
+        pairs.push([prop, val]);
+      }
+      return { params, pairs };
+    };
       const pairs = [];
       const nodes = Array.from(fieldsGrid.querySelectorAll('.prop, .val'));
       for (let i = 0; i < nodes.length; i += 2){
