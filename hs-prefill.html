@@ -102,7 +102,7 @@
 
       <div>
         <label>Fields to prefill</label>
-        <div id="fieldsGrid" class="two-col" aria-live="polite"></div>
+        <div id="fieldsGrid" aria-live="polite"></div>
         <div class="controls" style="margin-top:10px">
           <button class="btn" id="addRow">+ Add field</button>
           <button class="btn danger" id="clearRows" title="Remove all custom fields">Clear all</button>
@@ -188,43 +188,14 @@
         <div class="remove-col">
           <label>&nbsp;</label>
           <button class="remove" title="Remove row" aria-label="Remove row">×</button>
-        </div>`;
+        </div>
+      `;
 
       fieldsGrid.appendChild(row);
 
       const inputs = row.querySelectorAll('input');
       inputs.forEach(i => i.addEventListener('input', schedulePreview));
       row.querySelector('.remove').addEventListener('click', (e) => { e.preventDefault(); removeRow(row); });
-    }`;
-      const valId = `val_${Math.random().toString(36).slice(2,8)}`;
-
-      const frag = document.createDocumentFragment();
-
-      const propWrap = document.createElement('div');
-      propWrap.className = 'field-row';
-      propWrap.innerHTML = `
-        <div>
-          <label for="${propId}">Property name</label>
-          <input id="${propId}" class="prop mono" type="text" placeholder="e.g., email" value="${escapeHtml(prop)}" />
-        </div>
-      `;
-
-      const valWrap = document.createElement('div');
-      valWrap.className = 'value-wrap';
-      valWrap.innerHTML = `
-        <label for="${valId}">Prefill value</label>
-        <input id="${valId}" class="val" type="text" placeholder="e.g., clara@company.com" value="${escapeHtml(val)}" />
-        <button class="remove" title="Remove row" aria-label="Remove row">×</button>
-      `;
-
-      frag.appendChild(propWrap.firstElementChild);
-      frag.appendChild(valWrap);
-
-      fieldsGrid.appendChild(frag);
-
-      const inputs = [qs(`#${propId}`), qs(`#${valId}`)];
-      inputs.forEach(i => i.addEventListener('input', schedulePreview));
-      valWrap.querySelector('.remove').addEventListener('click', (e) => { e.preventDefault(); removeRow(valWrap); });
     }
 
     function removeRow(row){
@@ -240,18 +211,6 @@
         const prop = (r.querySelector('.prop')?.value || '').trim();
         const val = (r.querySelector('.val')?.value || '').trim();
         if (!prop || !val) continue;
-        params[prop] = val;
-        pairs.push([prop, val]);
-      }
-      return { params, pairs };
-    };
-      const pairs = [];
-      const nodes = Array.from(fieldsGrid.querySelectorAll('.prop, .val'));
-      for (let i = 0; i < nodes.length; i += 2){
-        const prop = (nodes[i].value || '').trim();
-        const val = (nodes[i+1]?.value || '').trim();
-        if (!prop || !val) continue;
-        // Only include non-empty pairs
         params[prop] = val;
         pairs.push([prop, val]);
       }
@@ -367,7 +326,7 @@
     copyBtn.addEventListener('click', (e)=>{ e.preventDefault(); copyToClipboard(); });
 
     // Boot
-    ['email','firstname','company'].forEach((p,i)=> createFieldRow(p, i===0 ? 'jane@example.com' : ''));
+    ['preferred_city','location','membership_type_interested_'].forEach((p,i)=> createFieldRow(p, i===0 ? 'Singapore' : ''));
     schedulePreview();
   </script>
 </body>
