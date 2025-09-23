@@ -3,331 +3,274 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>HubSpot Prefill URL Builder</title>
+  <title>Centered Year Calendar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root{
-      --bg: #f7f9fc;
-      --card: #ffffff;
-      --muted: #5b6b7f;
-      --text: #0b0d10;
-      --accent: #3b82f6;
-      --accent-2: #22d3ee;
-      --border: #d5dbe7;
-      --good: #10b981;
-      --warn: #f59e0b;
-      --danger: #ef4444;
-      --shadow: 0 8px 30px rgba(16, 24, 40, .08);
+      --bg: #f8fafc;
+      --panel: #ffffff;
+      --muted: #64748b;
+      --ink: #0f172a;
+      --line: #e2e8f0;
+      --ring: #94a3b8;
+      --shadow: 0 10px 20px rgba(2,6,23,.06), 0 2px 6px rgba(2,6,23,.04);
       --radius: 16px;
+      --ease: cubic-bezier(.2,.8,.2,1);
+      --gap: 6px;
+      --topbar: 56px; /* fixed toolbar height */
     }
-    html, body { height: 100%; }
+    *{box-sizing:border-box}
+    html,body{width:100svw;height:100svh;overflow:hidden}
     body{
-      margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-      background:
-        radial-gradient(1000px 600px at 10% -10%, rgba(59,130,246,.08), transparent 50%),
-        radial-gradient(1000px 600px at 100% 0%, rgba(34,211,238,.08), transparent 50%),
-        var(--bg);
-      color: var(--text);
+      margin:0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      background: linear-gradient(#fff, var(--bg));
+      color: var(--ink);
+      display:flex;flex-direction:column;
+      width:100svw;height:100svh;
     }
-    .wrap{ max-width: 1000px; margin: 40px auto; padding: 0 16px 48px; }
-    header{ display:flex; align-items: center; gap: 16px; margin-bottom: 16px; }
-    .logo{ width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, var(--accent), var(--accent-2)); box-shadow: var(--shadow); display:grid; place-items:center; font-weight: 900; color:#fff; }
-    h1{ font-size: clamp(22px, 3.2vw, 30px); margin: 0; letter-spacing: .2px; }
-    p.sub{ margin: 2px 0 0; color: var(--muted); font-size: 14px; }
 
-    .card{ background: linear-gradient(180deg, rgba(255,255,255,1), rgba(255,255,255,.98)); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; }
-    .stack{ display: grid; gap: 16px; }
+    /* Top bar (fixed height) */
+    .topbar{flex:0 0 var(--topbar);height:var(--topbar);backdrop-filter:saturate(1.2) blur(6px);background:rgba(255,255,255,.9);border-bottom:1px solid var(--line);z-index:10}
+    .toprow{height:100%;display:flex;align-items:center;justify-content:space-between;padding:0 20px}
+    .brand{display:flex;gap:10px;align-items:center}
+    .brand svg{width:24px;height:24px}
+    .title{font-weight:600;font-size:18px;letter-spacing:-.01em}
+    .navbtn{border:none;background:transparent;padding:8px;border-radius:14px;cursor:pointer;transition:background .2s var(--ease), transform .2s var(--ease)}
+    .navbtn:hover{background:rgba(15,23,42,.05)}
+    .navbtn:active{transform:translateY(1px)}
+    .navbtn svg{width:20px;height:20px;stroke:#0f172a}
 
-    label{ font-size: 13px; color: var(--muted); display:block; margin: 0 0 6px; }
-    .row{ display:grid; grid-template-columns: 1fr; gap: 12px; }
-    @media (min-width: 640px){ .row{ grid-template-columns: 1fr auto; align-items:center; } }
+    /* Main stage fills the rest of the viewport exactly */
+    main{flex:1 1 auto;min-height:0; /* allow child to size within */ height:calc(100svh - var(--topbar)); width:100svw; display:flex; flex-direction:column; padding:12px 16px}
 
-    input[type="text"], input[type="url"], textarea{ width:100%; box-sizing:border-box; background: #fff; color: var(--text); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; outline: none; transition:.15s border-color ease, .15s box-shadow ease; }
-    input::placeholder, textarea::placeholder{ color: #98a2b3; }
-    input:focus, textarea:focus{ border-color: #b4c3e2; box-shadow: 0 0 0 6px rgba(59,130,246,.15); }
+    .hint{color:var(--muted);font-size:13px;margin:0 0 8px 2px;flex:0 0 auto}
 
-    .controls{ display:flex; flex-wrap: wrap; gap: 10px; }
-    .btn{ appearance: none; border: 1px solid var(--border); background: #ffffff; color: var(--text); padding: 10px 14px; border-radius: 12px; font-weight: 600; cursor:pointer; transition: .15s transform ease, .15s background ease, .15s border-color ease; }
-    .btn:hover{ transform: translateY(-1px); border-color: #b4c3e2; background: #f6f8fb; }
-    .btn:active{ transform: translateY(0); }
-    .btn.primary{ background: linear-gradient(180deg, rgba(59,130,246,.12), rgba(59,130,246,.06)); border-color: #b4c3e2; }
-    .btn.good{ background: linear-gradient(180deg, rgba(16,185,129,.14), rgba(16,185,129,.08)); border-color: rgba(16,185,129,.35); }
-    .btn.danger{ background: linear-gradient(180deg, rgba(239,68,68,.12), rgba(239,68,68,.08)); border-color: rgba(239,68,68,.35); }
+    /* Grid consumes all remaining space without scrolling */
+    .gridwrap{position:relative;flex:1 1 auto;min-height:0}
+    .gridpane{position:absolute;inset:0;overflow:hidden}
+    .grid{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:1fr;gap:12px;height:100%;width:100%}
 
-    /* Field rows */
-    #fieldsGrid{ display: grid; gap: 10px; }
-    .row-grid{ display:grid; grid-template-columns: 1fr; gap: 12px; align-items:end; }
-    @media (min-width: 640px){ .row-grid{ grid-template-columns: 1fr 1fr auto; } }
+    /* Card occupies its grid cell fully */
+    .card{height:100%;width:100%;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+    .card.highlight{outline:1px solid #cbd5e1}
+    .card-head{flex:0 0 auto;padding:8px 12px;border-bottom:1px solid #f1f5f9}
+    .card-title{font-weight:600;font-size:14px;display:flex;align-items:center;justify-content:space-between}
+    .card-body{flex:1 1 auto;min-height:0;padding:8px 10px 10px;display:flex}
 
-    .remove-col{ display:flex; justify-content:flex-end; align-items:end; }
-    .remove{ border: 1px solid var(--border); background: #fff; color: #475569; width: 36px; height: 36px; border-radius: 10px; cursor: pointer; transition: .15s background ease, .15s transform ease, .15s border-color ease; }
-    .remove:hover{ background:#f6f8fb; transform: scale(1.04); border-color:#b4c3e2; }
-    .remove:active{ transform: scale(1.0); }
+    /* Month grid is 7 (weekdays) + 6 rows of days = 7 rows */
+    .month{display:grid;grid-template-columns:repeat(7,1fr);gap:var(--gap);align-content:center;justify-content:center;margin:auto}
+    .wday{color:#94a3b8;text-align:center;font-weight:600;font-size:11px}
+    .cells{grid-column:1 / -1; display:grid; grid-template-columns:repeat(7,1fr); gap:var(--gap)}
+    .cell{border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#334155;background:#fff;transition:background .2s var(--ease), box-shadow .2s var(--ease), transform .2s var(--ease)}
+    .cell.dim{background:#f1f5f9;color:#cbd5e1}
+    .cell:hover{background:#f8fafc}
+    .cell.today{outline:1px solid var(--ring);font-weight:600}
 
-    details{ border: 1px dashed #d6d9e6; border-radius: 12px; padding: 10px 12px; background: #f8fafc; }
-    details > summary{ cursor: pointer; list-style: none; font-weight: 700; display:flex; align-items:center; gap:8px; }
-    details > summary::before{ content: '▸'; transition: .15s transform ease; color: var(--muted); }
-    details[open] > summary::before{ transform: rotate(90deg); }
-    .utm-grid{ display:grid; grid-template-columns: 1fr; gap: 12px; margin-top: 12px; }
-    @media (min-width: 640px){ .utm-grid{ grid-template-columns: repeat(3, 1fr); } }
-
-    .out{ display:grid; gap: 8px; }
-    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 13px; }
-    .tiny{ color: var(--muted); font-size: 12px; }
-    .pill{ display:inline-flex; align-items:center; gap:6px; padding: 6px 10px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-size: 12px; }
-    .stat{ display:flex; align-items:center; gap:8px; color: var(--muted); font-size:12px; }
-    .stat b{ color: var(--text); }
-    .divider{ height:1px; background: linear-gradient(90deg, transparent, #e6eaf2, transparent); margin: 6px 0 2px; }
-    .footer-note{ margin-top: 10px; color: var(--muted); font-size: 12px; }
-    .help{ color: var(--muted); font-size:12px; }
+    /* Animations for the whole 12-month view */
+    .fade-enter{opacity:0;transform:translateY(12px)}
+    .fade-enter.fade-enter-active{opacity:1;transform:translateY(0);transition:opacity .25s var(--ease), transform .25s var(--ease)}
+    .fade-exit{opacity:1;transform:translateY(0)}
+    .fade-exit.fade-exit-active{opacity:0;transform:translateY(-12px);transition:opacity .2s var(--ease), transform .2s var(--ease)}
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <div class="logo" aria-hidden="true">⚙︎</div>
+  <header class="topbar">
+    <div class="toprow">
+      <div class="brand" aria-label="Calendar App Brand">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="4" width="18" height="18" rx="3" ry="3"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+        <div class="title">Centered Year</div>
+      </div>
       <div>
-        <h1>HubSpot Prefill URL Builder</h1>
-        <p class="sub">Paste the page URL that hosts your HubSpot form, add fields to prefill, and voilà—a shareable link that does the typing for your visitors.</p>
+        <button id="prevBtn" class="navbtn" aria-label="Previous month window" title="Previous">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>
+        <button id="nextBtn" class="navbtn" aria-label="Next month window" title="Next">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
       </div>
-    </header>
+    </div>
+  </header>
 
-    <section class="card stack" aria-labelledby="base-url-label">
-      <div>
-        <label id="base-url-label" for="baseUrl">HubSpot form page URL</label>
-        <input id="baseUrl" type="url" placeholder="https://yourdomain.com/landing-page-with-hubspot-form" inputmode="url" autocomplete="off" />
-        <div class="help">Tip: Use HubSpot field <em>internal names</em> below (e.g., <code class="mono">email</code>, <code class="mono">firstname</code>, <code class="mono">company</code>).</div>
-      </div>
-
-      <div class="divider"></div>
-
-      <div>
-        <label>Fields to prefill</label>
-        <div id="fieldsGrid" aria-live="polite"></div>
-        <div class="controls" style="margin-top:10px">
-          <button class="btn" id="addRow">+ Add field</button>
-          <button class="btn danger" id="clearRows" title="Remove all custom fields">Clear all</button>
-        </div>
-      </div>
-
-      <details id="utmPanel">
-        <summary>UTM parameters (optional)</summary>
-        <div class="utm-grid" style="margin-top:8px">
-          <div>
-            <label for="utm_source">utm_source</label>
-            <input id="utm_source" type="text" placeholder="newsletter" />
-          </div>
-          <div>
-            <label for="utm_medium">utm_medium</label>
-            <input id="utm_medium" type="text" placeholder="email" />
-          </div>
-          <div>
-            <label for="utm_campaign">utm_campaign</label>
-            <input id="utm_campaign" type="text" placeholder="q4_launch" />
-          </div>
-          <div>
-            <label for="utm_term">utm_term</label>
-            <input id="utm_term" type="text" placeholder="coworking+space" />
-          </div>
-          <div>
-            <label for="utm_content">utm_content</label>
-            <input id="utm_content" type="text" placeholder="sidebar_cta" />
-          </div>
-        </div>
-      </details>
-
-      <div class="divider"></div>
-
-      <div class="row">
-        <div>
-          <label for="resultUrl">Prefilled URL</label>
-          <input id="resultUrl" class="mono" type="text" readonly placeholder="Your generated link will appear here…" />
-          <div class="stat" id="statLine" aria-live="polite"><span class="pill"><span aria-hidden="true">🔗</span><span id="paramCount">0</span> params</span> <span>•</span> <span id="mergeHint">existing query params are preserved</span></div>
-        </div>
-        <div class="controls">
-          <button class="btn primary" id="genBtn">Generate URL</button>
-          <button class="btn good" id="copyBtn">Copy</button>
-          <a class="btn" id="openBtn" href="#" target="_blank" rel="noopener">Open</a>
-        </div>
-      </div>
-      <div class="footer-note">This tool composes a query string using your property names. HubSpot forms will auto-prefill matching fields when the page loads with those parameters.</div>
-    </section>
-  </div>
+  <main>
+    <p id="hint" class="hint">&nbsp;</p>
+    <div class="gridwrap" aria-live="polite">
+      <div id="gridMount" class="gridpane"></div>
+    </div>
+  </main>
 
   <script>
-    // Utilities
-    const qs = s => document.querySelector(s);
-    const qsa = s => Array.from(document.querySelectorAll(s));
+    /** Utilities **/
+    const WEEKDAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]; // Monday-first
 
-    const fieldsGrid = qs('#fieldsGrid');
-    const addRowBtn = qs('#addRow');
-    const clearRowsBtn = qs('#clearRows');
-    const baseUrlInput = qs('#baseUrl');
-    const resultInput = qs('#resultUrl');
-    const genBtn = qs('#genBtn');
-    const copyBtn = qs('#copyBtn');
-    const openBtn = qs('#openBtn');
-    const paramCountEl = qs('#paramCount');
-
-    const utmIds = ['utm_source','utm_medium','utm_campaign','utm_term','utm_content'];
-
-    function createFieldRow(prop = '', val = ''){
-      const propId = `prop_${Math.random().toString(36).slice(2,8)}`;
-      const valId = `val_${Math.random().toString(36).slice(2,8)}`;
-
-      const row = document.createElement('div');
-      row.className = 'row-grid';
-      row.innerHTML = `
-        <div>
-          <label for="${propId}">Property name</label>
-          <input id="${propId}" class="prop mono" type="text" placeholder="e.g., email" value="${escapeHtml(prop)}" />
-        </div>
-        <div>
-          <label for="${valId}">Prefill value</label>
-          <input id="${valId}" class="val" type="text" placeholder="e.g., clara@company.com" value="${escapeHtml(val)}" />
-        </div>
-        <div class="remove-col">
-          <label>&nbsp;</label>
-          <button class="remove" title="Remove row" aria-label="Remove row">×</button>
-        </div>
-      `;
-
-      fieldsGrid.appendChild(row);
-
-      const inputs = row.querySelectorAll('input');
-      inputs.forEach(i => i.addEventListener('input', schedulePreview));
-      row.querySelector('.remove').addEventListener('click', (e) => { e.preventDefault(); removeRow(row); });
+    function addMonths(date, count){
+      const d = new Date(date);
+      d.setMonth(d.getMonth() + count);
+      return d;
     }
-
-    function removeRow(row){
-      row.remove();
-      schedulePreview();
+    function startOfMonth(date){
+      const d = new Date(date);
+      d.setDate(1); d.setHours(0,0,0,0); return d;
     }
-
-    function getCustomParams(){
-      const params = {};
-      const pairs = [];
-      const rows = Array.from(fieldsGrid.querySelectorAll('.row-grid'));
-      for (const r of rows){
-        const prop = (r.querySelector('.prop')?.value || '').trim();
-        const val = (r.querySelector('.val')?.value || '').trim();
-        if (!prop || !val) continue;
-        params[prop] = val;
-        pairs.push([prop, val]);
+    function endOfMonth(date){
+      const d = new Date(date); d.setMonth(d.getMonth()+1,0); d.setHours(23,59,59,999); return d;
+    }
+    function formatMonthYear(date){
+      return date.toLocaleDateString(undefined,{year:'numeric', month:'long'});
+    }
+    function getMonthGrid(date){
+      const first = startOfMonth(date);
+      const jsFirstDow = first.getDay();
+      const monFirstDow = (jsFirstDow + 6) % 7; // Sun=0..Sat=6 -> Mon=0..Sun=6
+      const leading = monFirstDow;
+      const totalCells = 42; // 6 weeks * 7 days
+      const cells = [];
+      const gridStart = new Date(first);
+      gridStart.setDate(first.getDate() - leading);
+      const now = new Date();
+      for(let i=0;i<totalCells;i++){
+        const d = new Date(gridStart);
+        d.setDate(gridStart.getDate()+i);
+        const inCurrentMonth = d.getMonth() === date.getMonth();
+        const isToday = d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth() && d.getDate()===now.getDate();
+        cells.push({date:d,inCurrentMonth,isToday});
       }
-      return { params, pairs };
+      const rows=[]; for(let r=0;r<6;r++) rows.push(cells.slice(r*7, r*7+7));
+      return rows;
     }
 
-    function getUtmParams(){
-      const o = {};
-      utmIds.forEach(id => {
-        const v = (qs('#' + id).value || '').trim();
-        if (v) o[id] = v;
+    const gridMount = document.getElementById('gridMount');
+    const hintEl = document.getElementById('hint');
+    let offset = 0; // shifts the entire 12-month window
+    const today = new Date();
+
+    function buildMonthCard(date, highlight){
+      const card = document.createElement('section');
+      card.className = 'card' + (highlight ? ' highlight' : '');
+      const head = document.createElement('div'); head.className = 'card-head';
+      const title = document.createElement('div'); title.className = 'card-title'; title.textContent = formatMonthYear(date);
+      head.appendChild(title);
+      const body = document.createElement('div'); body.className = 'card-body';
+
+      const month = document.createElement('div'); month.className = 'month';
+      const wdays = document.createElement('div'); wdays.className = 'wday-row';
+      // Weekday headers (rendered within .month grid as 7 items)
+      WEEKDAYS.forEach(wd=>{
+        const el = document.createElement('div'); el.className = 'wday'; el.textContent = wd; month.appendChild(el);
       });
-      return o;
+
+      const cellsWrap = document.createElement('div'); cellsWrap.className = 'cells';
+      for(const week of getMonthGrid(date)){
+        for(const cell of week){
+          const d = document.createElement('div');
+          d.className = 'cell' + (cell.inCurrentMonth ? '' : ' dim') + (cell.isToday ? ' today' : '');
+          d.title = cell.date.toDateString();
+          d.textContent = String(cell.date.getDate());
+          cellsWrap.appendChild(d);
+        }
+      }
+      month.appendChild(cellsWrap);
+
+      body.appendChild(month);
+      card.appendChild(head); card.appendChild(body);
+      return card;
     }
 
-    function normalizeBaseUrl(url){
-      let u = (url || '').trim();
-      if (!u) return '';
-      try{ new URL(u); return u; }catch{}
-      // If missing scheme, try https://
-      try{ new URL('https://' + u); return 'https://' + u; }catch{}
-      return '';
-    }
+    function render(){
+      // Update hint text
+      const a = addMonths(today, offset);
+      const b = addMonths(today, offset+1);
+      hintEl.innerHTML = `The center two tiles are <span style="font-weight:600;color:#334155">${formatMonthYear(a)}</span> and <span style="font-weight:600;color:#334155">${formatMonthYear(b)}</span>.`;
 
-    function buildUrl(){
-      const base = normalizeBaseUrl(baseUrlInput.value);
-      const { params } = getCustomParams();
-      const utm = getUtmParams();
+      const firstMonth = addMonths(today, -5 + offset);
+      const months = Array.from({length:12}, (_,i)=> addMonths(firstMonth, i));
 
-      const merged = { ...utm, ...params }; // custom fields override UTM if names clash (unlikely)
+      const grid = document.createElement('div');
+      grid.className = 'grid fade-enter';
 
-      const allEntries = Object.entries(merged);
-      paramCountEl.textContent = allEntries.length.toString();
+      months.forEach((m, idx)=>{
+        const card = buildMonthCard(m, idx===5 || idx===6);
+        grid.appendChild(card);
+      });
 
-      if (!base){
-        // Return just the query for preview purposes
-        const queryOnly = allEntries.map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
-        return { url: queryOnly ? ('?' + queryOnly) : '', valid: false };
+      // Transition swap
+      const prev = gridMount.firstElementChild;
+      if(prev){
+        prev.classList.remove('fade-enter','fade-enter-active');
+        prev.classList.add('fade-exit');
+        void prev.offsetWidth; // reflow
+        prev.classList.add('fade-exit-active');
+        prev.addEventListener('transitionend', ()=>{
+          if(prev.parentNode) prev.parentNode.removeChild(prev);
+        }, {once:true});
       }
 
-      const urlObj = new URL(base);
-      // Preserve existing query params but prefer our values on conflict
-      const existing = new URLSearchParams(urlObj.search);
-      for (const [k,v] of allEntries){ existing.set(k, v); }
-      // Remove empty keys just in case
-      for (const [k,v] of Array.from(existing.entries())){
-        if (k.trim() === '' || v.trim() === '') existing.delete(k);
-      }
-      urlObj.search = existing.toString();
-      return { url: urlObj.toString(), valid: true };
-    }
-
-    let raf;
-    function schedulePreview(){
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(updatePreview);
-    }
-
-    function updatePreview(){
-      const { url, valid } = buildUrl();
-      resultInput.value = url;
-      openBtn.href = valid && url ? url : '#';
-      openBtn.setAttribute('aria-disabled', valid && url ? 'false' : 'true');
-    }
-
-    function copyToClipboard(){
-      const v = resultInput.value;
-      if (!v){ toast('Nothing to copy', 'warn'); return; }
-      navigator.clipboard.writeText(v).then(() => toast('Copied!')).catch(() => {
-        resultInput.select();
-        document.execCommand('copy');
-        toast('Copied!');
+      gridMount.appendChild(grid);
+      requestAnimationFrame(()=>{
+        grid.classList.add('fade-enter-active');
+        fitCells();
       });
     }
 
-    function clearRows(){
-      fieldsGrid.innerHTML = '';
-      addFieldRow();
-      schedulePreview();
+    // Compute cell sizes so 4x3 grid fits perfectly into 100svw x 100svh without scroll
+    function fitCells(){
+      const pane = gridMount.firstElementChild; if(!pane) return;
+      const cards = pane.querySelectorAll('.card');
+      if(cards.length===0) return;
+
+      // Measure a card to determine available inner height
+      cards.forEach(card=>{
+        const head = card.querySelector('.card-head');
+        const body = card.querySelector('.card-body');
+        const month = card.querySelector('.month');
+        const cellsWrap = card.querySelector('.cells');
+        if(!head || !body || !month || !cellsWrap) return;
+        // Available height for month content inside body
+        const bodyStyles = getComputedStyle(body);
+        const bodyPad = parseFloat(bodyStyles.paddingTop) + parseFloat(bodyStyles.paddingBottom);
+        const availH = body.clientHeight - bodyPad; // inside body
+
+        // We need 1 row for weekdays + 6 rows for days = 7 rows, with gaps between rows (6 gaps)
+        const gaps = 6 * parseFloat(getComputedStyle(month).gap || '6');
+        const cellSizeByHeight = Math.floor((availH - gaps) / 7);
+
+        // Also constrain by width of the card
+        const cellsGap = 6 * parseFloat(getComputedStyle(cellsWrap).gap || '6');
+        const availW = cellsWrap.clientWidth - cellsGap; // 7 columns -> 6 gaps
+        const cellSizeByWidth = Math.floor(availW / 7);
+
+        const size = Math.max(10, Math.min(cellSizeByHeight, cellSizeByWidth));
+        // Apply width/height to each cell and to weekday row height
+        cellsWrap.querySelectorAll('.cell').forEach(el=>{
+          el.style.width = size + 'px';
+          el.style.height = size + 'px';
+          el.style.fontSize = (size > 18 ? 12 : 10) + 'px';
+          el.style.borderRadius = Math.max(6, Math.round(size*0.18)) + 'px';
+        });
+        month.querySelectorAll('.wday').forEach(el=>{
+          el.style.height = Math.round(size * 0.9) + 'px';
+          el.style.lineHeight = Math.round(size * 0.9) + 'px';
+          el.style.fontSize = (size > 18 ? 11 : 10) + 'px';
+        });
+      });
     }
 
-    function addFieldRow(){ createFieldRow('', ''); }
+    // Recompute on resize to maintain no-overflow guarantee
+    addEventListener('resize', ()=>{ fitCells(); });
 
-    function toast(msg, kind){
-      const t = document.createElement('div');
-      t.textContent = msg;
-      t.style.position = 'fixed';
-      t.style.bottom = '20px';
-      t.style.left = '50%';
-      t.style.transform = 'translateX(-50%)';
-      t.style.background = kind === 'warn' ? 'var(--warn)' : 'var(--good)';
-      t.style.color = '#0b0d10';
-      t.style.padding = '10px 14px';
-      t.style.borderRadius = '999px';
-      t.style.fontWeight = '800';
-      t.style.boxShadow = 'var(--shadow)';
-      t.style.zIndex = 9999;
-      document.body.appendChild(t);
-      setTimeout(() => t.remove(), 1200);
-    }
+    // Nav buttons
+    document.getElementById('prevBtn').addEventListener('click', ()=>{ offset -= 1; render(); });
+    document.getElementById('nextBtn').addEventListener('click', ()=>{ offset += 1; render(); });
 
-    function escapeHtml(str){
-      return String(str).replace(/[&<>"]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s]));
-    }
-
-    // Event wiring
-    addRowBtn.addEventListener('click', (e)=>{ e.preventDefault(); addFieldRow(); });
-    clearRowsBtn.addEventListener('click', (e)=>{ e.preventDefault(); clearRows(); });
-    baseUrlInput.addEventListener('input', schedulePreview);
-    utmIds.forEach(id => qs('#' + id).addEventListener('input', schedulePreview));
-
-    genBtn.addEventListener('click', (e)=>{ e.preventDefault(); updatePreview(); if(resultInput.value) toast('URL generated'); });
-    copyBtn.addEventListener('click', (e)=>{ e.preventDefault(); copyToClipboard(); });
-
-    // Boot
-    ['preferred_city','location','membership_type_interested_'].forEach((p,i)=> createFieldRow(p, i===0 ? 'Singapore' : ''));
-    schedulePreview();
+    // Initial paint
+    render();
   </script>
 </body>
 </html>
