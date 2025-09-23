@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HubSpot Prefill URL Builder</title>
+  <style>
+    :root{
+      --bg: #f7f9fc;
+      --card: #ffffff;
+      --muted: #5b6b7f;
+      --text: #0b0d10;
+      --accent: #3b82f6;
+      --accent-2: #22d3ee;
+      --border: #d5dbe7;
+      --good: #10b981;
+      --warn: #f59e0b;
+      --danger: #ef4444;
+      --shadow: 0 8px 30px rgba(16, 24, 40, .08);
+      --radius: 16px;
+    }
+    html, body { height: 100%; }
+    body{
+      margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background:
+        radial-gradient(1000px 600px at 10% -10%, rgba(59,130,246,.08), transparent 50%),
+        radial-gradient(1000px 600px at 100% 0%, rgba(34,211,238,.08), transparent 50%),
+        var(--bg);
+      color: var(--text);
+    }
+    .wrap{ max-width: 1000px; margin: 40px auto; padding: 0 16px 48px; }
+    header{ display:flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+    .logo{ width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, var(--accent), var(--accent-2)); box-shadow: var(--shadow); display:grid; place-items:center; font-weight: 900; color:#fff; }
+    h1{ font-size: clamp(22px, 3.2vw, 30px); margin: 0; letter-spacing: .2px; }
+    p.sub{ margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+
+    .card{ background: linear-gradient(180deg, rgba(255,255,255,1), rgba(255,255,255,.98)); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; }
+    .stack{ display: grid; gap: 16px; }
+
+    label{ font-size: 13px; color: var(--muted); display:block; margin: 0 0 6px; }
+    .row{ display:grid; grid-template-columns: 1fr; gap: 12px; }
+    @media (min-width: 640px){ .row{ grid-template-columns: 1fr auto; align-items:center; } }
+
+    input[type="text"], input[type="url"], textarea{ width:100%; box-sizing:border-box; background: #fff; color: var(--text); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; outline: none; transition:.15s border-color ease, .15s box-shadow ease; }
+    input::placeholder, textarea::placeholder{ color: #98a2b3; }
+    input:focus, textarea:focus{ border-color: #b4c3e2; box-shadow: 0 0 0 6px rgba(59,130,246,.15); }
+
+    .controls{ display:flex; flex-wrap: wrap; gap: 10px; }
+    .btn{ appearance: none; border: 1px solid var(--border); background: #ffffff; color: var(--text); padding: 10px 14px; border-radius: 12px; font-weight: 600; cursor:pointer; transition: .15s transform ease, .15s background ease, .15s border-color ease; }
+    .btn:hover{ transform: translateY(-1px); border-color: #b4c3e2; background: #f6f8fb; }
+    .btn:active{ transform: translateY(0); }
+    .btn.primary{ background: linear-gradient(180deg, rgba(59,130,246,.12), rgba(59,130,246,.06)); border-color: #b4c3e2; }
+    .btn.good{ background: linear-gradient(180deg, rgba(16,185,129,.14), rgba(16,185,129,.08)); border-color: rgba(16,185,129,.35); }
+    .btn.danger{ background: linear-gradient(180deg, rgba(239,68,68,.12), rgba(239,68,68,.08)); border-color: rgba(239,68,68,.35); }
+
+    /* Field rows */
+    #fieldsGrid{ display: grid; gap: 10px; }
+    .row-grid{ display:grid; grid-template-columns: 1fr; gap: 12px; align-items:end; }
+    @media (min-width: 640px){ .row-grid{ grid-template-columns: 1fr 1fr auto; } }
+
+    .remove-col{ display:flex; justify-content:flex-end; align-items:end; }
+    .remove{ border: 1px solid var(--border); background: #fff; color: #475569; width: 36px; height: 36px; border-radius: 10px; cursor: pointer; transition: .15s background ease, .15s transform ease, .15s border-color ease; }
+    .remove:hover{ background:#f6f8fb; transform: scale(1.04); border-color:#b4c3e2; }
+    .remove:active{ transform: scale(1.0); }
+
+    details{ border: 1px dashed #d6d9e6; border-radius: 12px; padding: 10px 12px; background: #f8fafc; }
+    details > summary{ cursor: pointer; list-style: none; font-weight: 700; display:flex; align-items:center; gap:8px; }
+    details > summary::before{ content: '▸'; transition: .15s transform ease; color: var(--muted); }
+    details[open] > summary::before{ transform: rotate(90deg); }
+    .utm-grid{ display:grid; grid-template-columns: 1fr; gap: 12px; margin-top: 12px; }
+    @media (min-width: 640px){ .utm-grid{ grid-template-columns: repeat(3, 1fr); } }
+
+    .out{ display:grid; gap: 8px; }
+    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 13px; }
+    .tiny{ color: var(--muted); font-size: 12px; }
+    .pill{ display:inline-flex; align-items:center; gap:6px; padding: 6px 10px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-size: 12px; }
+    .stat{ display:flex; align-items:center; gap:8px; color: var(--muted); font-size:12px; }
+    .stat b{ color: var(--text); }
+    .divider{ height:1px; background: linear-gradient(90deg, transparent, #e6eaf2, transparent); margin: 6px 0 2px; }
+    .footer-note{ margin-top: 10px; color: var(--muted); font-size: 12px; }
+    .help{ color: var(--muted); font-size:12px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="logo" aria-hidden="true">⚙︎</div>
+      <div>
+        <h1>HubSpot Prefill URL Builder</h1>
+        <p class="sub">Paste the page URL that hosts your HubSpot form, add fields to prefill, and voilà—a shareable link that does the typing for your visitors.</p>
+      </div>
+    </header>
+
+    <section class="card stack" aria-labelledby="base-url-label">
+      <div>
+        <label id="base-url-label" for="baseUrl">HubSpot form page URL</label>
+        <input id="baseUrl" type="url" placeholder="https://yourdomain.com/landing-page-with-hubspot-form" inputmode="url" autocomplete="off" />
+        <div class="help">Tip: Use HubSpot field <em>internal names</em> below (e.g., <code class="mono">email</code>, <code class="mono">firstname</code>, <code class="mono">company</code>).</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div>
+        <label>Fields to prefill</label>
+        <div id="fieldsGrid" aria-live="polite"></div>
+        <div class="controls" style="margin-top:10px">
+          <button class="btn" id="addRow">+ Add field</button>
+          <button class="btn danger" id="clearRows" title="Remove all custom fields">Clear all</button>
+        </div>
+      </div>
+
+      <details id="utmPanel">
+        <summary>UTM parameters (optional)</summary>
+        <div class="utm-grid" style="margin-top:8px">
+          <div>
+            <label for="utm_source">utm_source</label>
+            <input id="utm_source" type="text" placeholder="newsletter" />
+          </div>
+          <div>
+            <label for="utm_medium">utm_medium</label>
+            <input id="utm_medium" type="text" placeholder="email" />
+          </div>
+          <div>
+            <label for="utm_campaign">utm_campaign</label>
+            <input id="utm_campaign" type="text" placeholder="q4_launch" />
+          </div>
+          <div>
+            <label for="utm_term">utm_term</label>
+            <input id="utm_term" type="text" placeholder="coworking+space" />
+          </div>
+          <div>
+            <label for="utm_content">utm_content</label>
+            <input id="utm_content" type="text" placeholder="sidebar_cta" />
+          </div>
+        </div>
+      </details>
+
+      <div class="divider"></div>
+
+      <div class="row">
+        <div>
+          <label for="resultUrl">Prefilled URL</label>
+          <input id="resultUrl" class="mono" type="text" readonly placeholder="Your generated link will appear here…" />
+          <div class="stat" id="statLine" aria-live="polite"><span class="pill"><span aria-hidden="true">🔗</span><span id="paramCount">0</span> params</span> <span>•</span> <span id="mergeHint">existing query params are preserved</span></div>
+        </div>
+        <div class="controls">
+          <button class="btn primary" id="genBtn">Generate URL</button>
+          <button class="btn good" id="copyBtn">Copy</button>
+          <a class="btn" id="openBtn" href="#" target="_blank" rel="noopener">Open</a>
+        </div>
+      </div>
+      <div class="footer-note">This tool composes a query string using your property names. HubSpot forms will auto-prefill matching fields when the page loads with those parameters.</div>
+    </section>
+  </div>
+
+  <script>
+    // Utilities
+    const qs = s => document.querySelector(s);
+    const qsa = s => Array.from(document.querySelectorAll(s));
+
+    const fieldsGrid = qs('#fieldsGrid');
+    const addRowBtn = qs('#addRow');
+    const clearRowsBtn = qs('#clearRows');
+    const baseUrlInput = qs('#baseUrl');
+    const resultInput = qs('#resultUrl');
+    const genBtn = qs('#genBtn');
+    const copyBtn = qs('#copyBtn');
+    const openBtn = qs('#openBtn');
+    const paramCountEl = qs('#paramCount');
+
+    const utmIds = ['utm_source','utm_medium','utm_campaign','utm_term','utm_content'];
+
+    function createFieldRow(prop = '', val = ''){
+      const propId = `prop_${Math.random().toString(36).slice(2,8)}`;
+      const valId = `val_${Math.random().toString(36).slice(2,8)}`;
+
+      const row = document.createElement('div');
+      row.className = 'row-grid';
+      row.innerHTML = `
+        <div>
+          <label for="${propId}">Property name</label>
+          <input id="${propId}" class="prop mono" type="text" placeholder="e.g., email" value="${escapeHtml(prop)}" />
+        </div>
+        <div>
+          <label for="${valId}">Prefill value</label>
+          <input id="${valId}" class="val" type="text" placeholder="e.g., clara@company.com" value="${escapeHtml(val)}" />
+        </div>
+        <div class="remove-col">
+          <label>&nbsp;</label>
+          <button class="remove" title="Remove row" aria-label="Remove row">×</button>
+        </div>
+      `;
+
+      fieldsGrid.appendChild(row);
+
+      const inputs = row.querySelectorAll('input');
+      inputs.forEach(i => i.addEventListener('input', schedulePreview));
+      row.querySelector('.remove').addEventListener('click', (e) => { e.preventDefault(); removeRow(row); });
+    }
+
+    function removeRow(row){
+      row.remove();
+      schedulePreview();
+    }
+
+    function getCustomParams(){
+      const params = {};
+      const pairs = [];
+      const rows = Array.from(fieldsGrid.querySelectorAll('.row-grid'));
+      for (const r of rows){
+        const prop = (r.querySelector('.prop')?.value || '').trim();
+        const val = (r.querySelector('.val')?.value || '').trim();
+        if (!prop || !val) continue;
+        params[prop] = val;
+        pairs.push([prop, val]);
+      }
+      return { params, pairs };
+    }
+
+    function getUtmParams(){
+      const o = {};
+      utmIds.forEach(id => {
+        const v = (qs('#' + id).value || '').trim();
+        if (v) o[id] = v;
+      });
+      return o;
+    }
+
+    function normalizeBaseUrl(url){
+      let u = (url || '').trim();
+      if (!u) return '';
+      try{ new URL(u); return u; }catch{}
+      // If missing scheme, try https://
+      try{ new URL('https://' + u); return 'https://' + u; }catch{}
+      return '';
+    }
+
+    function buildUrl(){
+      const base = normalizeBaseUrl(baseUrlInput.value);
+      const { params } = getCustomParams();
+      const utm = getUtmParams();
+
+      const merged = { ...utm, ...params }; // custom fields override UTM if names clash (unlikely)
+
+      const allEntries = Object.entries(merged);
+      paramCountEl.textContent = allEntries.length.toString();
+
+      if (!base){
+        // Return just the query for preview purposes
+        const queryOnly = allEntries.map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+        return { url: queryOnly ? ('?' + queryOnly) : '', valid: false };
+      }
+
+      const urlObj = new URL(base);
+      // Preserve existing query params but prefer our values on conflict
+      const existing = new URLSearchParams(urlObj.search);
+      for (const [k,v] of allEntries){ existing.set(k, v); }
+      // Remove empty keys just in case
+      for (const [k,v] of Array.from(existing.entries())){
+        if (k.trim() === '' || v.trim() === '') existing.delete(k);
+      }
+      urlObj.search = existing.toString();
+      return { url: urlObj.toString(), valid: true };
+    }
+
+    let raf;
+    function schedulePreview(){
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(updatePreview);
+    }
+
+    function updatePreview(){
+      const { url, valid } = buildUrl();
+      resultInput.value = url;
+      openBtn.href = valid && url ? url : '#';
+      openBtn.setAttribute('aria-disabled', valid && url ? 'false' : 'true');
+    }
+
+    function copyToClipboard(){
+      const v = resultInput.value;
+      if (!v){ toast('Nothing to copy', 'warn'); return; }
+      navigator.clipboard.writeText(v).then(() => toast('Copied!')).catch(() => {
+        resultInput.select();
+        document.execCommand('copy');
+        toast('Copied!');
+      });
+    }
+
+    function clearRows(){
+      fieldsGrid.innerHTML = '';
+      addFieldRow();
+      schedulePreview();
+    }
+
+    function addFieldRow(){ createFieldRow('', ''); }
+
+    function toast(msg, kind){
+      const t = document.createElement('div');
+      t.textContent = msg;
+      t.style.position = 'fixed';
+      t.style.bottom = '20px';
+      t.style.left = '50%';
+      t.style.transform = 'translateX(-50%)';
+      t.style.background = kind === 'warn' ? 'var(--warn)' : 'var(--good)';
+      t.style.color = '#0b0d10';
+      t.style.padding = '10px 14px';
+      t.style.borderRadius = '999px';
+      t.style.fontWeight = '800';
+      t.style.boxShadow = 'var(--shadow)';
+      t.style.zIndex = 9999;
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 1200);
+    }
+
+    function escapeHtml(str){
+      return String(str).replace(/[&<>"]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s]));
+    }
+
+    // Event wiring
+    addRowBtn.addEventListener('click', (e)=>{ e.preventDefault(); addFieldRow(); });
+    clearRowsBtn.addEventListener('click', (e)=>{ e.preventDefault(); clearRows(); });
+    baseUrlInput.addEventListener('input', schedulePreview);
+    utmIds.forEach(id => qs('#' + id).addEventListener('input', schedulePreview));
+
+    genBtn.addEventListener('click', (e)=>{ e.preventDefault(); updatePreview(); if(resultInput.value) toast('URL generated'); });
+    copyBtn.addEventListener('click', (e)=>{ e.preventDefault(); copyToClipboard(); });
+
+    // Boot
+    ['preferred_city','location','membership_type_interested_'].forEach((p,i)=> createFieldRow(p, i===0 ? 'Singapore' : ''));
+    schedulePreview();
+  </script>
+</body>
+</html>
