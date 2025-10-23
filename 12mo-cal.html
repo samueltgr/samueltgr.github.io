@@ -64,10 +64,11 @@
     .month{display:grid;grid-template-columns:repeat(7,1fr);gap:var(--gap);align-content:center;justify-content:center;margin:auto}
     .wday{color:#94a3b8;text-align:center;font-weight:600;font-size:11px}
     .cells{grid-column:1 / -1; display:grid; grid-template-columns:repeat(7,1fr); gap:var(--gap)}
-    .cell{border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#334155;background:#fff;transition:background .2s var(--ease), box-shadow .2s var(--ease), transform .2s var(--ease)}
+    .cell{border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#334155;background:#fff;transition:background .2s var(--ease), box-shadow .2s var(--ease), transform .2s var(--ease);cursor:pointer}
     .cell.dim{background:#f1f5f9;color:#cbd5e1}
     .cell:hover{background:#f8fafc}
     .cell.today{outline:1px solid var(--ring);font-weight:600}
+    .cell.selected{background:#dbeafe;color:#1e40af;font-weight:600;box-shadow:inset 0 0 0 2px #3b82f6}
 
     /* Animations for the whole 12-month view */
     .fade-enter{opacity:0;transform:translateY(12px)}
@@ -146,10 +147,49 @@
       return rows;
     }
 
+    function dateToKey(date){
+      return date.getFullYear() + '-' + (date.getMonth()+1) + '-' + date.getDate();
+    }
+
     const gridMount = document.getElementById('gridMount');
     const hintEl = document.getElementById('hint');
     let offset = 0; // shifts the entire 12-month window
     const today = new Date();
+    const selectedDates = new Set(); // stores date keys
+
+    function handleCellClick(dateObj){
+      const key = dateToKey(dateObj);
+      
+      // If clicked date is already selected (part of selection)
+      if(selectedDates.has(key)){
+        // Clear all selections
+        selectedDates.clear();
+      } else {
+        // If nothing selected, start new selection
+        if(selectedDates.size === 0){
+          selectedDates.add(key);
+        } else {
+          // If one or more dates selected, create range from first selected to clicked
+          const firstKey = Array.from(selectedDates)[0];
+          const firstParts = firstKey.split('-');
+          const firstDate = new Date(parseInt(firstParts[0]), parseInt(firstParts[1])-1, parseInt(firstParts[2]));
+          
+          // Determine range direction
+          const start = firstDate < dateObj ? firstDate : dateObj;
+          const end = firstDate < dateObj ? dateObj : firstDate;
+          
+          // Clear current selection and fill range
+          selectedDates.clear();
+          const current = new Date(start);
+          while(current <= end){
+            selectedDates.add(dateToKey(current));
+            current.setDate(current.getDate() + 1);
+          }
+        }
+      }
+      
+      render();
+    }
 
     function buildMonthCard(date, highlight){
       const card = document.createElement('section');
@@ -170,9 +210,12 @@
       for(const week of getMonthGrid(date)){
         for(const cell of week){
           const d = document.createElement('div');
-          d.className = 'cell' + (cell.inCurrentMonth ? '' : ' dim') + (cell.isToday ? ' today' : '');
+          const key = dateToKey(cell.date);
+          const isSelected = selectedDates.has(key);
+          d.className = 'cell' + (cell.inCurrentMonth ? '' : ' dim') + (cell.isToday ? ' today' : '') + (isSelected ? ' selected' : '');
           d.title = cell.date.toDateString();
           d.textContent = String(cell.date.getDate());
+          d.addEventListener('click', ()=> handleCellClick(cell.date));
           cellsWrap.appendChild(d);
         }
       }
