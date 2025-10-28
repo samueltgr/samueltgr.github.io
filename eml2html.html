@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robust EML to HTML Converter</title>
+    <style>
+        :root {
+            --background-color: #f4f7f9;
+            --container-bg: #ffffff;
+            --text-color: #333;
+            --primary-color: #007bff;
+            --primary-hover: #0056b3;
+            --border-color: #dbe2e8;
+            --code-bg: #2d3748;
+            --code-color: #e2e8f0;
+            --success-color: #28a745;
+            --error-color: #dc3545;
+            --warning-color: #ffc107;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        .converter-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: var(--container-bg);
+            padding: 25px 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            border: 1px solid var(--border-color);
+        }
+
+        h1 {
+            color: var(--text-color);
+            text-align: center;
+            margin-top: 0;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 15px;
+            margin-bottom: 10px;
+        }
+        
+        h2 {
+            margin-top: 30px;
+            color: #4a5568;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+        }
+
+        p.description {
+            text-align: center;
+            color: #6a788c;
+            margin-bottom: 25px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 250px;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            font-family: "Courier New", Courier, monospace;
+            font-size: 14px;
+            box-sizing: border-box;
+            resize: vertical;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        textarea:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
+            outline: none;
+        }
+
+        button {
+            display: block;
+            width: 100%;
+            padding: 12px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+            background-color: var(--primary-color);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+        
+        .output-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: -10px;
+        }
+
+        #copyBtn {
+            width: auto;
+            margin-top: 0;
+            font-size: 14px;
+            padding: 8px 15px;
+            background-color: #6c757d;
+        }
+        
+        #copyBtn:hover {
+             background-color: #5a6268;
+        }
+
+        #status {
+            text-align: center;
+            margin-top: 15px;
+            font-weight: bold;
+            height: 20px;
+            padding: 8px;
+            border-radius: 4px;
+        }
+        
+        .status-error {
+            color: var(--error-color);
+            background-color: #f8d7da;
+        }
+        
+        .status-success {
+            color: var(--success-color);
+            background-color: #d4edda;
+        }
+        
+        .status-info {
+            color: #0c5460;
+            background-color: #d1ecf1;
+        }
+
+        pre {
+            background-color: var(--code-bg);
+            color: var(--code-color);
+            padding: 15px;
+            border-radius: 6px;
+            max-height: 400px;
+            overflow: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        code {
+            font-family: "Consolas", "Monaco", monospace;
+            font-size: 14px;
+        }
+        
+        #htmlPreview {
+            width: 100%;
+            height: 500px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            margin-top: 15px;
+            background-color: #fff;
+        }
+    </style>
+    <!-- 
+      FIX: Removed dependency on external library. The core EML parsing logic is now self-contained and browser-compatible.
+    -->
+    <script>
+        /******************************************************************************************
+ * EML format parser. EML is raw e-mail message header + body as returned by POP3 protocol.
+ * RFC 822: http://www.ietf.org/rfc/rfc0822.txt
+ * RFC 1521: https://www.ietf.org/rfc/rfc1521.txt
+ ******************************************************************************************/
+
+    // --- Browser Compatibility Fixes (Polyfills/Replacements) ---
+    // 1. Minimal Buffer Polyfill for base64 to utf8 string conversion (browser-safe replacement)
+    if (typeof Buffer === 'undefined') {
+        var Buffer = {
+            from: function(value, encoding) {
+                if (encoding === 'base64') {
+                    // Base64 to Uint8Array/String conversion
+                    const base64_value = value.replace(/\s/g, "");
+                    const binary_string = atob(base64_value);
+                    const len = binary_string.length;
+                    const bytes = new Uint8Array(len);
+                    for (let i = 0; i < len; i++) {
+                        bytes[i] = binary_string.charCodeAt(i);
+                    }
+                    bytes.toString = function(outputEncoding) {
+                        if (outputEncoding === 'utf8' || !outputEncoding) {
+                            return new TextDecoder('utf-8').decode(this);
+                        }
+                        // Non-UTF8 encodings like 'gb2312' or 'iso-8859-2' are not fully supported
+                        // by native browser APIs without a library like iconv-lite.
+                        console.warn(`Browser-based conversion does not fully support non-UTF8 encoding: ${outputEncoding}. Attempting UTF-8.`);
+                        return new TextDecoder('utf-8').decode(this);
+                    };
+                    return bytes;
+                }
+                // String to Uint8Array (for base64 encoding later)
+                const encoder = new TextEncoder();
+                const bytes = encoder.encode(value);
+                bytes.toString = function(outputEncoding) {
+                    if (outputEncoding === 'base64') {
+                        let binary = '';
+                        const len = this.byteLength;
+                        for (let i = 0; i < len; i++) {
+                            binary += String.fromCharCode(this[i]);
+                        }
+                        return btoa(binary);
+                    }
+                    return new TextDecoder().decode(this);
+                };
+                return bytes;
+            }
+        };
+    }
+    // 2. Removed `var iconv = require('iconv-lite');` (and its uses simplified below)
+    // 3. Removed `require('fs')` and `require('path')` (and `emlformat.unpack`)
+
+//Default character set
+var defaultCharset = 'utf-8'; //to use if charset=... is missing
+
+//Gets the character encoding name for iconv, e.g. 'iso-8859-2' -> 'iso88592'
+function getCharsetName(charset) {
+  return charset.toLowerCase().replace(/[^0-9a-z]/g, "");
+}
+
+//Generates a random id
+function guid() {
+  return 'xxxxxxxxxxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
+    return v.toString(16);
+  }).replace("-", "");
+}
+
+//Word-wrap the string 's' to 'i' chars per row
+function wrap(s, i) {
+  var a = [ ];
+  do { a.push(s.substring(0, i)) }
+  while( (s = s.substring(i, s.length)) != "" );
+  return a.join("\r\n");
+}
+
+//Overridable properties and functions
+var emlformat = {
+  verbose: false,
+  fileExtensions: {
+    "text/plain": ".txt",
+    "text/html": ".html",
+    "image/png": ".png",
+    "image/jpg": ".jpg",
+    "image/jpeg": ".jpg",
+  },
+  //Gets file extension by mime type
+  getFileExtension: function(mimeType) {
+    return emlformat.fileExtensions[mimeType] || "";
+  },
+  //Gets the boundary name
+  getBoundary: function(contentType) {
+    var match = /boundary="?(.+?)"?(\s*;[\s\S]*)?$/g.exec(contentType);
+    return match ? match[1] : undefined;
+  },
+  //Gets character set name, e.g. contentType='.....charset="iso-8859-2"....'
+  getCharset: function(contentType) {
+    var match = /charset\s*=\W*([\w\-]+)/g.exec(contentType);
+    return match ? match[1] : undefined;
+  },
+  //Gets name and e-mail address from a string, e.g. "PayPal" <noreply@paypal.com> => { name: "PayPal", email: "noreply@paypal.com" }
+  getEmailAddress: function(raw) {
+    var list = [ ];
+    
+    //Split around ',' char
+    //var parts = raw.split(/,/g); //Will also split ',' inside the quotes
+    //var parts = raw.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g); //Ignore ',' within the double quotes
+    var parts = raw.match(/("[^"]*")|[^,]+/g); //Ignore ',' within the double quotes
+    
+    for (var i = 0; i < parts.length; i++) {
+      var address = { };
+      
+      //Quoted name but without the e-mail address
+      if (/^".*"$/g.test(parts[i])) {
+        address.name = emlformat.unquoteString(parts[i]).replace(/"/g, "").trim();
+        i++; //Shift to another part to capture e-mail address
+      }
+      
+      var regex = /^(.*?)(\s*\<(.*?)\>)$/g;
+      var match = regex.exec(parts[i]);
+      if (match) {
+        var name = emlformat.unquoteString(match[1]).replace(/"/g, "").trim();
+        if (name && name.length) {
+          address.name = name;
+        }
+        address.email = match[3].trim();
+        list.push(address);
+      }
+      else {
+        //E-mail address only (without the name)
+        address.email = parts[i].trim();
+        list.push(address);
+      }
+    }
+    
+    //Return result
+    if (list.length == 0) {
+      return null; //No e-mail address
+    }
+    if (list.length == 1) {
+      return list[0]; //Only one record, return as object, required to preserve backward compatibility
+    }
+    return list; //Multiple e-mail addresses as array
+  },
+  //Builds e-mail address string, e.g. { name: "PayPal", email: "noreply@paypal.com" } => "PayPal" <noreply@paypal.com>
+  toEmailAddress: function(data) {
+    var email = "";
+    if (typeof data == "undefined") {
+      //No e-mail address
+    }
+    else if (typeof data == "string") {
+      email = data;
+    }
+    else if (typeof data == "object") {
+      if (Array.isArray(data)) {
+        for (var i = 0; i < data.length; i++) {
+          email += (email.length ? ', ' : '');
+          if (data[i].name) {
+            email += '"' + data[i].name + '"';
+          }
+          if (data[i].email) {
+            email += (email.length ? ' ' : '') + '<' + data[i].email + '>';
+          }
+        }
+      }
+      else {
+        if (data.name) {
+          email += '"' + data.name + '"';
+        }
+        if (data.email) {
+          email += (email.length ? ' ' : '') + '<' + data.email + '>';
+        }
+      }
+    }
+    return email;
+  },
+  //Decodes string by detecting the charset
+  unquoteString: function(s) {
+    var regex = /=\?([^?]+)\?(B|Q)\?(.+?)(\?=)/gi;
+    var match = regex.exec(s);
+    if (match) {
+      var charset = getCharsetName(match[1] || defaultCharset); //eq. match[1] = 'iso-8859-2'; charset = 'iso88592'
+      var type = match[2].toUpperCase();
+      var value = match[3];
+      if (type == "B") { //Base64
+        // Use polyfilled Buffer for browser compatibility
+        if (charset == "utf8") {
+          return Buffer.from(value.replace(/\r?\n/g, ""), "base64").toString("utf8");
+        }
+        else {
+          // Simplified Base64 decoding for non-utf8 (using utf8 as fallback)
+          console.warn(`Browser-based conversion: Falling back to UTF-8 for encoded header with charset "${charset}"`);
+          return Buffer.from(value.replace(/\r?\n/g, ""), "base64").toString("utf8");
+        }
+      }
+      else if (type == "Q") { //Quoted printable
+        return emlformat.unquotePrintable(value, charset);
+      }
+    }
+    return s;
+  },
+  //Decodes string like =?UTF-8?B?V2hhdOKAmXMgeW91ciBvbmxpbmUgc2hvcHBpbmcgc3R5bGU/?= or =?UTF-8?Q?...?=
+  unquoteUTF8: function(s) {
+    var regex = /=\?UTF\-8\?(B|Q)\?(.+?)(\?=)/gi;
+    var match = regex.exec(s);
+    if (match) {
+      var type = match[1].toUpperCase();
+      var value = match[2];
+      if (type == "B") { //Base64
+        return Buffer.from(value.replace(/\r?\n/g, ""), "base64").toString("utf8");
+      }
+      else if (type == "Q") { //Quoted printable
+        return emlformat.unquotePrintable(value);
+      }
+    }
+    return s;
+  },
+  //Decodes "quoted-printable"
+  unquotePrintable: function(s, charset) {
+    //Convert =0D to '\r', =20 to ' ', etc.
+    if (!charset || charset == "utf8" || charset == "utf-8") {
+      return s
+      .replace(/=([\w\d]{2})=([\w\d]{2})=([\w\d]{2})/gi, function(matcher, p1, p2, p3, offset, string) { return new TextDecoder('utf-8').decode(new Uint8Array([ parseInt(p1, 16), parseInt(p2, 16), parseInt(p3, 16) ])); })
+      .replace(/=([\w\d]{2})=([\w\d]{2})/gi, function(matcher, p1, p2, offset, string) { return new TextDecoder('utf-8').decode(new Uint8Array([ parseInt(p1, 16), parseInt(p2, 16) ])); })
+      .replace(/=([\w\d]{2})/gi, function(matcher, p1, offset, string) { return String.fromCharCode(parseInt(p1, 16)); })
+      .replace(/=\r?\n/gi, ""); //Join line
+    }
+    else {
+      // Non-UTF8 decoding simplified for browser
+      console.warn(`Browser-based conversion: Falling back to UTF-8 for Quoted-Printable with charset "${charset}"`);
+      return s
+      .replace(/=([\w\d]{2})=([\w\d]{2})=([\w\d]{2})/gi, function(matcher, p1, p2, p3, offset, string) { return new TextDecoder('utf-8').decode(new Uint8Array([ parseInt(p1, 16), parseInt(p2, 16), parseInt(p3, 16) ])); })
+      .replace(/=([\w\d]{2})=([\w\d]{2})/gi, function(matcher, p1, p2, offset, string) { return new TextDecoder('utf-8').decode(new Uint8Array([ parseInt(p1, 16), parseInt(p2, 16) ])); })
+      .replace(/=([\w\d]{2})/gi, function(matcher, p1, offset, string) { return String.fromCharCode(parseInt(p1, 16)); })
+      .replace(/=\r?\n/gi, ""); //Join line
+    }
+  }
+};
+
+/******************************************************************************************
+ * Unpacks EML message and attachments to a directory.
+ * THIS FUNCTION IS NODE.JS-SPECIFIC AND HAS BEEN REMOVED FOR BROWSER COMPATIBILITY.
+ ******************************************************************************************/
+/*
+emlformat.unpack = function(eml, directory, options, callback) {
+  // ... (Code removed: requires Node.js 'fs' and 'path')
+};
+*/
+
+/******************************************************************************************
+ * Parses EML file content and return user-friendly object.
+ * @params data        EML structure
+ * @params options     EML build options
+ * @params callback    Callback function(error, data)
+ ******************************************************************************************/
+emlformat.build = function(data, options, callback) {
+  //Shift arguments
+  if (typeof options == "function" && typeof callback == "undefined") {
+    callback = options;
+    options = null;
+  }
+  
+  if (typeof callback != "function") {
+    callback = function(error, result) { };
+  }
+  
+  var eml = "";
+  var EOL = "\r\n"; //End-of-line
+  
+  try {
+    if (!data || typeof data != "object") {
+      throw new Error("Argument 'data' expected to be an object!");
+    }
+    
+    if (!data.headers) {
+      data.headers = { };
+    }
+    
+    if (typeof data.subject == "string") {
+      data.headers["Subject"] = data.subject;
+    }
+    
+    if (typeof data.from != "undefined") {
+      data.headers["From"] = (typeof data.from == "string" ? data.from : emlformat.toEmailAddress(data.from));
+    }
+    
+    if (typeof data.to != "undefined") {
+      data.headers["To"] = (typeof data.to == "string" ? data.to : emlformat.toEmailAddress(data.to));
+    }
+    
+    if (typeof data.cc != "undefined") {
+      data.headers["Cc"] = (typeof data.cc == "string" ? data.cc : emlformat.toEmailAddress(data.cc));
+    }
+    
+    if (!data.headers["To"]) {
+      throw new Error("Missing 'To' e-mail address!");
+    }
+    
+    var boundary = "----=" + guid();
+    if (typeof data.headers["Content-Type"] == "undefined") {
+      data.headers["Content-Type"] = 'multipart/mixed;' + EOL + 'boundary="' + boundary + '"';
+    }
+    else {
+      var name = emlformat.getBoundary(data.headers["Content-Type"]);
+      if (name) {
+        boundary = name;
+      }
+    }
+    
+    //Build headers
+    var keys = Object.keys(data.headers);
+    for (var i = 0; i < keys.length; i++) {
+      var key = keys[i];
+      var value = data.headers[key];
+      if (typeof value == "undefined") {
+        continue; //Skip missing headers
+      }
+      else if (typeof value == "string") {
+        eml += key + ": " + value.replace(/\r?\n/g, EOL + "  ") + EOL;
+      }
+      else { //Array
+        for (var j = 0; j < value.length; j++) {
+          eml += key + ": " + value[j].replace(/\r?\n/g, EOL + "  ") + EOL;
+        }
+      }
+    }
+    
+    //Start the body
+    eml += EOL;
+    
+    //Plain text content
+    if (data.text) {
+      eml += "--" + boundary + EOL;
+      eml += "Content-Type: text/plain; charset=utf-8" + EOL;
+      eml += EOL;
+      eml += data.text;
+      eml += EOL + EOL;
+    }
+    
+    //HTML content
+    if (data.html) {
+      eml += "--" + boundary + EOL;
+      eml += "Content-Type: text/html; charset=utf-8" + EOL;
+      eml += EOL;
+      eml += data.html;
+      eml += EOL + EOL;
+    }
+    
+    //Append attachments
+    if (data.attachments) {
+      for (var i = 0; i < data.attachments.length; i++) {
+        var attachment = data.attachments[i];
+        eml += '--' + boundary + EOL;
+        eml += 'Content-Type: ' + (attachment.contentType || "application/octet-stream") + EOL;
+        eml += 'Content-Transfer-Encoding: base64' + EOL;
+        eml += 'Content-Disposition: ' + (attachment.inline ? "inline" : "attachment") + '; filename="' + (attachment.filename || attachment.name || ("attachment_" + (i + 1))) + '"' + EOL;
+        if (attachment.cid) {
+          eml += 'Content-ID: <' + attachment.cid + ">" + EOL;
+        }
+        eml += EOL;
+        if (typeof attachment.data == "string") {
+          var content = Buffer.from(attachment.data).toString("base64");
+          eml += wrap(content, 76) + EOL;
+        }
+        else { //Buffer
+          var content = attachment.data.toString("base64");
+          eml += wrap(content, 76) + EOL;
+        }
+        eml += EOL;
+      }      
+    }
+    
+    //Finish the boundary
+    eml += "--" + boundary + "--" + EOL;
+    
+    callback(null, eml);
+  }
+  catch (e) {
+    callback(e);
+  }
+};
+
+/******************************************************************************************
+ * Parses EML file content and return user-friendly object.
+ * @params eml         EML file content or object from 'parse'
+ * @params options     EML parse options
+ * @params callback    Callback function(error, data)
+ ******************************************************************************************/
+emlformat.read = function(eml, options, callback) {
+  //Shift arguments
+  if (typeof options == "function" && typeof callback == "undefined") {
+    callback = options;
+    options = null;
+  }
+  
+  if (typeof callback != "function") {
+    callback = function(error, result) { };
+  }
+  
+  function _read(data) {
+    try {
+      var result = { };
+      if (data.headers["Date"]) {
+        result.date = new Date(data.headers["Date"]);
+      }
+      if (data.headers["Subject"]) {
+        result.subject = emlformat.unquoteString(data.headers["Subject"]);
+      }
+      if (data.headers["From"]) {
+        result.from = emlformat.getEmailAddress(data.headers["From"]);
+      }
+      if (data.headers["To"]) {
+        result.to = emlformat.getEmailAddress(data.headers["To"]);
+      }
+      if (data.headers["CC"]) {
+        result.cc = emlformat.getEmailAddress(data.headers["CC"]);
+      }
+      if (data.headers["Cc"]) {
+        result.cc = emlformat.getEmailAddress(data.headers["Cc"]);
+      }
+      result.headers = data.headers;
+      
+      //Appends the boundary to the result
+      function _append(headers, content) {
+        var contentType = headers["Content-Type"];
+        var charset = getCharsetName(emlformat.getCharset(contentType) || defaultCharset);
+        var encoding = headers["Content-Transfer-Encoding"];
+        if (typeof encoding == "string") {
+          encoding = encoding.toLowerCase();
+        }
+        
+        // Decoding content
+        if (encoding == "base64") {
+            // Using Buffer polyfill which handles base64 to byte array
+            var contentBuffer = Buffer.from(content.replace(/\r?\n/g, ""), "base64");
+            if (charset == "gb2312" || charset == "gbk") {
+                console.warn(`Browser-based conversion: Falling back to UTF-8 for Base64 content with charset "${charset}"`);
+                content = contentBuffer.toString('utf8');
+            } else {
+                content = contentBuffer.toString(charset);
+            }
+        }
+        else if (encoding == "quoted-printable") {
+          content = emlformat.unquotePrintable(content, charset);
+        }
+        else if (charset != "utf8" && (encoding.startsWith("binary") || encoding.startsWith("8bit"))) {
+          //"8bit", "binary", "8bitmime", "binarymime"
+          console.warn(`Browser-based conversion: Falling back to string for 8bit/binary content with charset "${charset}"`);
+          // Note: In Node.js, this used iconv.decode. Here, we rely on the string being readable.
+          // content = iconv.decode(Buffer.from(content,'binary'), charset);
+        }
+
+        if (!result.html && contentType && contentType.indexOf("text/html") >= 0) {
+          if (typeof content != "string") {
+            // Convert Buffer/Uint8Array to string, using charset if available (defaults to utf8 in polyfill)
+            content = Buffer.from(content).toString(charset);
+          }
+          //Message in HTML format
+          result.html = content;
+        }
+        else if (!result.text && contentType && contentType.indexOf("text/plain") >= 0) {
+          if (typeof content != "string") {
+            // Convert Buffer/Uint8Array to string, using charset if available (defaults to utf8 in polyfill)
+            content = Buffer.from(content).toString(charset);
+          }
+          //Plain text message
+          result.text = content;
+        }
+        else {
+          //Get the attachment
+          if (!result.attachments) {
+            result.attachments = [ ];
+          }
+          
+          var attachment = { };
+          
+          var id = headers["Content-ID"];
+          if (id) {
+            attachment.id = id;
+          }
+          
+          var name = headers["Content-Disposition"] || headers["Content-Type"];
+          if (name) {
+            var match = /name="?(.+?)"?$/gi.exec(name);
+            if (match) {
+              name = match[1];
+            }
+            else {
+              name = null;
+            }
+          }
+          if (name) {
+            attachment.name = name;
+          }
+          
+          var ct = headers["Content-Type"];
+          if (ct) {
+            attachment.contentType = ct;
+          }
+          
+          var cd = headers["Content-Disposition"];
+          if (cd) {
+            attachment.inline = /^\s*inline/g.test(cd);
+          }
+          
+          attachment.data = content;
+          result.attachments.push(attachment);
+        }
+      }
+      
+      //Content mime type
+      var boundary = null;
+      var ct = data.headers["Content-Type"];
+      if (ct && /^multipart\//g.test(ct)) {
+        var b = emlformat.getBoundary(ct);
+        if (b && b.length) {
+          boundary = b;
+        }
+      }
+      
+      if (boundary) {
+        for (var i = 0; i < data.body.length; i++) {
+          var b = data.body[i];
+          
+          //Get the message content
+          if (typeof b.part == "undefined") {
+            console.warn("Warning: undefined b.part");
+          }
+          else if (typeof b.part == "string") {
+            result.data = b.part;
+          }
+          else {
+            if (typeof b.part.body == "undefined") {
+              console.warn("Warning: undefined b.part.body");
+            }
+            else if (typeof b.part.body == "string") {
+              // b.part.body - this line does nothing
+              
+              var headers = b.part.headers;
+              var content = b.part.body;
+              
+              _append(headers, content);
+            }
+            else {
+              for (var j = 0; j < b.part.body.length; j++) {
+                if (typeof b.part.body[j] == "string") {
+                  result.data = b.part.body[j];
+                  continue;
+                }
+                
+                var headers = b.part.body[j].part.headers;
+                var content = b.part.body[j].part.body;
+                
+                _append(headers, content);
+              }
+            }
+          }
+        }
+      }
+      else if (typeof data.body == "string") {
+        _append(data.headers, data.body);
+      }
+      
+      callback(null, result);
+    }
+    catch (e) {
+      callback(e);
+    }
+  }
+  
+  if (typeof eml == "string") {
+    emlformat.parse(eml, options, function(error, data) {
+      if (error) return callback(error);
+      if (!data) return callback(new Error("Cannot parse EML content!"));
+      _read(data);
+    });
+  }
+  else if (typeof eml == "object") {
+    _read(eml);
+  }
+  else {
+    callback(new Error("Missing EML file content!"));
+  }
+};
+
+/******************************************************************************************
+ * Parses EML file content and returns object-oriented representation of the content.
+ * @params eml         EML file content
+ * @params options     EML parse options
+ * @params callback    Callback function(error, data)
+ ******************************************************************************************/
+emlformat.parse = function(eml, options, callback) {
+  //Shift arguments
+  if (typeof options == "function" && typeof callback == "undefined") {
+    callback = options;
+    options = null;
+  }
+  
+  if (typeof callback != "function") {
+    callback = function(error, result) { };
+  }
+  
+  try {
+    if (typeof eml != "string") {
+      throw new Error("Argument 'eml' expected to be string!");
+    }
+    
+    var lines = eml.split(/\r?\n/);
+    var result = { };
+    parseRecursive(lines, 0, result, options);
+    callback(null, result);
+  }
+  catch (e) {
+    callback(e);
+  }
+};
+
+/******************************************************************************************
+ * Parses EML file content.
+ ******************************************************************************************/
+function parseRecursive(lines, start, parent, options) {
+  var boundary = null;
+  var lastHeaderName = "";
+  var findBoundary = "";
+  var insideBody = false;
+  var insideBoundary = false;
+  var isMultiHeader = false;
+  var isMultipart = false;
+  
+  parent.headers = { };
+  //parent.body = null;
+  
+  function complete(boundary) {
+    //boundary.part = boundary.lines.join("\r\n");
+    boundary.part = { };
+    parseRecursive(boundary.lines, 0, boundary.part, options);
+    delete boundary.lines;
+  }
+  
+  //Read line by line
+  for (var i = start; i < lines.length; i++) {
+    var line = lines[i];
+        
+    //Header
+    if (!insideBody) {
+      //Search for empty line
+      if (line == "") {
+        insideBody = true;
+        
+        if (options && options.headersOnly) {
+          break;
+        }
+        
+        //Expected boundary
+        var ct = parent.headers["Content-Type"];
+        if (ct && /^multipart\//g.test(ct)) {
+          var b = emlformat.getBoundary(ct);
+          if (b && b.length) {
+            findBoundary = b;
+            isMultipart = true;
+            parent.body = [ ];
+          }
+          else {
+            if (emlformat.verbose) {
+              console.warn("Multipart without boundary! " + ct.replace(/\r?\n/g, " "));
+            }
+          }
+        }
+        
+        continue;
+      }
+      
+      //Header value with new line
+      var match = /^\s+([^\r\n]+)/g.exec(line);
+      if (match) {
+        if (isMultiHeader) {
+          parent.headers[lastHeaderName][parent.headers[lastHeaderName].length - 1] += "\r\n" + match[1];
+        }
+        else {
+          parent.headers[lastHeaderName] += "\r\n" + match[1];
+        }
+        continue;
+      }
+      
+      //Header name and value
+      var match = /^([\w\d\-]+):\s+([^\r\n]+)/gi.exec(line);  
+      if (match) {
+        lastHeaderName = match[1];
+        if (parent.headers[lastHeaderName]) {
+          //Multiple headers with the same name
+          isMultiHeader = true;
+          if (typeof parent.headers[lastHeaderName] == "string") {
+            parent.headers[lastHeaderName] = [ parent.headers[lastHeaderName] ];
+          }
+          parent.headers[lastHeaderName].push(match[2]);
+        }
+        else {
+          //Header first appeared here
+          isMultiHeader = false;
+          parent.headers[lastHeaderName] = match[2];
+        }
+        continue;
+      }
+    }
+    //Body
+    else {
+      
+      //Multipart body
+      if (isMultipart) {
+        //Search for boundary start
+        
+        //Updated on 2019-10-12: A line before the boundary marker is not required to be an empty line
+        //if (lines[i - 1] == "" && line.indexOf("--" + findBoundary) == 0 && !/\-\-(\r?\n)?$/g.test(line)) {
+        if (line.indexOf("--" + findBoundary) == 0 && !/\-\-(\r?\n)?$/g.test(line)) {
+          
+          insideBoundary = true;
+          
+          //Complete the previous boundary
+          if (boundary && boundary.lines) {
+            complete(boundary);
+          }
+          
+          //Start a new boundary
+          var match = /^\-\-([^\r\n]+)(\r?\n)?$/g.exec(line);
+          boundary = { boundary: match[1], lines: [ ] };
+          parent.body.push(boundary);
+          
+          if (emlformat.verbose) {
+            console.log("Found boundary: " + boundary.boundary);
+          }
+          
+          continue;
+        }
+        
+        if (insideBoundary) {
+          //Search for boundary end
+          if (boundary.boundary && lines[i - 1] == "" && line.indexOf("--" + findBoundary + "--") == 0) {
+            insideBoundary = false;
+            complete(boundary);
+            continue;
+          }
+          boundary.lines.push(line); 
+        }
+      }
+      else {
+        //Solid string body
+        parent.body = lines.splice(i).join("\r\n");
+        break;
+      }
+    }
+  }
+  
+  //Complete the last boundary
+  if (parent.body && parent.body.length && parent.body[parent.body.length - 1].lines) {
+    complete(parent.body[parent.body.length - 1]);
+  }
+}
+
+// FIX: Removed the Node.js specific line `module.exports = emlformat;`
+
+    </script>
+</head>
+<body>
+
+    <div class="converter-container">
+        <h1>Robust EML to HTML Converter</h1>
+        <p class="description">Paste the full source code of your EML file below. The tool will extract, decode, and display the clean HTML content for you.</p>
+
+        <textarea id="emlInput" placeholder="Paste your .eml file content here..."></textarea>
+        <button id="convertBtn">Convert to HTML</button>
+        <div id="status"></div>
+
+        <div class="output-header">
+            <h2>Converted HTML Code</h2>
+            <button id="copyBtn">Copy to Clipboard</button>
+        </div>
+        <pre><code id="htmlOutput">Your clean HTML code will appear here...</code></pre>
+
+        <h2>Live Preview</h2>
+        <iframe id="htmlPreview" title="Rendered HTML Preview"></iframe>
+    </div>
+
+    <script>
+        // --- Global Error Handler ---
+        window.onerror = function(message, source, lineno, colno, error) {
+            console.error("A critical error was caught by the global handler:", {
+                message: message,
+                source: source,
+                line: lineno,
+                column: colno,
+                errorObject: error
+            });
+            const statusEl = document.getElementById('status');
+            if (statusEl) {
+                updateStatus('A critical script error occurred. Check the developer console for details.', 'error');
+            }
+            return true;
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const emlInput = document.getElementById('emlInput');
+            const convertBtn = document.getElementById('convertBtn');
+            const copyBtn = document.getElementById('copyBtn');
+            const statusEl = document.getElementById('status');
+            const htmlOutput = document.getElementById('htmlOutput');
+            const htmlPreview = document.getElementById('htmlPreview');
+
+            function updateStatus(message, type) {
+                statusEl.textContent = message;
+                statusEl.className = `status-${type}`;
+                statusEl.style.display = message ? 'block' : 'none';
+            }
+
+            function handleEmlConversion() {
+                const emlContent = emlInput.value;
+
+                if (!emlContent.trim()) {
+                    updateStatus('Error: Input is empty. Please paste your EML content.', 'error');
+                    htmlOutput.textContent = 'Please paste EML content first.';
+                    return;
+                }
+
+                updateStatus('Processing...', 'info');
+
+                try {
+                    // Step 1: Parse the raw EML content into a structure
+                    emlformat.parse(emlContent, (parseError, parsedData) => {
+                        if (parseError || !parsedData) {
+                            const errorMessage = 'Error: Failed to parse EML headers/structure. The format may be invalid.';
+                            console.error('EML Parsing Error:', parseError);
+                            updateStatus(errorMessage, 'error');
+                            htmlOutput.textContent = 'Parsing failed. Please verify the EML source code is complete and valid.';
+                            return;
+                        }
+                        
+                        // Step 2 (The FIX): Read the parsed structure to decode content and attachments
+                        emlformat.read(parsedData, (readError, finalData) => {
+                            if (readError || !finalData) {
+                                const errorMessage = 'Error: Failed to decode EML body content.';
+                                console.error('EML Read Error:', readError);
+                                updateStatus(errorMessage, 'error');
+                                htmlOutput.textContent = 'Decoding failed. An issue occurred while reading the content parts.';
+                                return;
+                            }
+
+                            const finalHtml = finalData.html;
+
+                            if (finalHtml && typeof finalHtml === 'string') {
+                                htmlOutput.textContent = finalHtml;
+                                htmlPreview.srcdoc = finalHtml;
+                                updateStatus('Conversion Successful!', 'success');
+                                console.log('EML conversion successful. Found data:', finalData);
+                            } else {
+                                const warningMessage = 'Warning: An HTML version of this email could not be found.';
+                                updateStatus(warningMessage, 'warning'); // Changed to warning since it's not a fatal script error
+                                htmlOutput.textContent = `The EML file does not contain a 'text/html' part. It might be a plain-text only email. The plain text content is: \n\n${finalData.text || '(No text content found either)'}`;
+                                htmlPreview.srcdoc = `<p style="padding: 20px; color: #856404; background-color: #fff3cd; border: 1px solid #ffeeba; border-radius: 4px;">${warningMessage}<br>Displaying plain text content in output code block.</p>`;
+                                console.warn('Could not find HTML content. Full read data object:', finalData);
+                            }
+                        });
+                    });
+                } catch (e) {
+                    const errorMessage = 'An unexpected error occurred during the conversion process.';
+                    updateStatus(errorMessage, 'error');
+                    htmlOutput.textContent = 'An error prevented the conversion. Check the console for technical details.';
+                    console.error('Unexpected exception in handleEmlConversion:', e);
+                }
+            }
+            
+            convertBtn.addEventListener('click', () => {
+                updateStatus('', 'info');
+                htmlOutput.textContent = '...';
+                htmlPreview.srcdoc = '';
+
+                if (typeof emlformat === 'undefined') {
+                    const uiMessage = 'Error: The conversion library failed to initialize.';
+                    const consoleMessage = 'The required "emlformat" library is not defined. Check the script for syntax errors or Node.js dependencies.';
+                    
+                    updateStatus(uiMessage, 'error');
+                    htmlOutput.textContent = 'Conversion failed: Core library is missing.';
+                    console.error(consoleMessage);
+                    return;
+                }
+
+                handleEmlConversion();
+            });
+            
+            copyBtn.addEventListener('click', () => {
+                const code = htmlOutput.textContent;
+                const placeholderTexts = [
+                    'Your clean HTML code will appear here...',
+                    '...',
+                    'Parsing failed. Please verify the EML source code is complete and valid.',
+                    'Decoding failed. An issue occurred while reading the content parts.',
+                    'Conversion failed: Core library is missing.'
+                ];
+
+                if (code && !placeholderTexts.some(p => code.includes(p)) && code.trim() !== '') {
+                    navigator.clipboard.writeText(code).then(() => {
+                        const originalBtnText = copyBtn.textContent;
+                        copyBtn.textContent = 'Copied!';
+                        copyBtn.style.backgroundColor = 'var(--success-color)';
+                        setTimeout(() => {
+                            copyBtn.textContent = originalBtnText;
+                            copyBtn.style.backgroundColor = '#6c757d'; // Restore original hover color
+                        }, 2000);
+                    }).catch(err => {
+                        updateStatus('Failed to copy to clipboard.', 'error');
+                        console.error('Clipboard write error:', err);
+                    });
+                } else {
+                    updateStatus('Nothing to copy yet. Please convert an EML file first.', 'error');
+                }
+            });
+
+            statusEl.style.display = 'none';
+        });
+    </script>
+</body>
+</html>
