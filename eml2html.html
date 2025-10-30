@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Robust EML to HTML Converter</title>
+    <title>Robust EML to HTML Converter with CSS Inliner</title>
     <style>
         :root {
             --background-color: #f4f7f9;
@@ -105,7 +105,12 @@
             margin-bottom: -10px;
         }
 
-        #copyBtn {
+        .header-buttons {
+            display: flex;
+            gap: 10px; /* Space between buttons */
+        }
+        
+        #copyBtn, #downloadBtn {
             width: auto;
             margin-top: 0;
             font-size: 14px;
@@ -113,7 +118,7 @@
             background-color: #6c757d;
         }
         
-        #copyBtn:hover {
+        #copyBtn:hover, #downloadBtn:hover {
              background-color: #5a6268;
         }
 
@@ -165,10 +170,29 @@
             margin-top: 15px;
             background-color: #fff;
         }
+
+        .options-group {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+
+        .option-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 14px;
+            color: var(--text-color);
+            cursor: pointer;
+        }
+
+        .option-item input[type="checkbox"] {
+            cursor: pointer;
+        }
     </style>
-    <!-- 
-      FIX: Removed dependency on external library. The core EML parsing logic is now self-contained and browser-compatible.
-    -->
+    <!-- FIX: Re-integrated the EML format parser script, adapted for browser use -->
     <script>
         /******************************************************************************************
  * EML format parser. EML is raw e-mail message header + body as returned by POP3 protocol.
@@ -177,7 +201,7 @@
  ******************************************************************************************/
 
     // --- Browser Compatibility Fixes (Polyfills/Replacements) ---
-    // 1. Minimal Buffer Polyfill for base64 to utf8 string conversion (browser-safe replacement)
+    // Minimal Buffer Polyfill for base64 to utf8 string conversion (browser-safe replacement)
     if (typeof Buffer === 'undefined') {
         var Buffer = {
             from: function(value, encoding) {
@@ -194,9 +218,8 @@
                         if (outputEncoding === 'utf8' || !outputEncoding) {
                             return new TextDecoder('utf-8').decode(this);
                         }
-                        // Non-UTF8 encodings like 'gb2312' or 'iso-8859-2' are not fully supported
-                        // by native browser APIs without a library like iconv-lite.
-                        console.warn(`Browser-based conversion does not fully support non-UTF8 encoding: ${outputEncoding}. Attempting UTF-8.`);
+                        // Non-UTF8 encodings are not fully supported natively. Fallback to UTF-8.
+                        console.warn(`Browser-based conversion: Falling back to UTF-8 for encoded data with charset "${outputEncoding}"`);
                         return new TextDecoder('utf-8').decode(this);
                     };
                     return bytes;
@@ -219,8 +242,7 @@
             }
         };
     }
-    // 2. Removed `var iconv = require('iconv-lite');` (and its uses simplified below)
-    // 3. Removed `require('fs')` and `require('path')` (and `emlformat.unpack`)
+    // Removed Node.js-specific imports (`require`, `fs`, `path`, `iconv-lite`)
 
 //Default character set
 var defaultCharset = 'utf-8'; //to use if charset=... is missing
@@ -275,8 +297,6 @@ var emlformat = {
     var list = [ ];
     
     //Split around ',' char
-    //var parts = raw.split(/,/g); //Will also split ',' inside the quotes
-    //var parts = raw.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g); //Ignore ',' within the double quotes
     var parts = raw.match(/("[^"]*")|[^,]+/g); //Ignore ',' within the double quotes
     
     for (var i = 0; i < parts.length; i++) {
@@ -360,7 +380,6 @@ var emlformat = {
           return Buffer.from(value.replace(/\r?\n/g, ""), "base64").toString("utf8");
         }
         else {
-          // Simplified Base64 decoding for non-utf8 (using utf8 as fallback)
           console.warn(`Browser-based conversion: Falling back to UTF-8 for encoded header with charset "${charset}"`);
           return Buffer.from(value.replace(/\r?\n/g, ""), "base64").toString("utf8");
         }
@@ -398,7 +417,7 @@ var emlformat = {
       .replace(/=\r?\n/gi, ""); //Join line
     }
     else {
-      // Non-UTF8 decoding simplified for browser
+      // Non-UTF8 decoding simplified for browser, relying on native `TextDecoder` if possible, or falling back to char codes.
       console.warn(`Browser-based conversion: Falling back to UTF-8 for Quoted-Printable with charset "${charset}"`);
       return s
       .replace(/=([\w\d]{2})=([\w\d]{2})=([\w\d]{2})/gi, function(matcher, p1, p2, p3, offset, string) { return new TextDecoder('utf-8').decode(new Uint8Array([ parseInt(p1, 16), parseInt(p2, 16), parseInt(p3, 16) ])); })
@@ -410,23 +429,12 @@ var emlformat = {
 };
 
 /******************************************************************************************
- * Unpacks EML message and attachments to a directory.
- * THIS FUNCTION IS NODE.JS-SPECIFIC AND HAS BEEN REMOVED FOR BROWSER COMPATIBILITY.
+ * Unpacks EML message and attachments to a directory. (REMOVED: Node.js-specific)
  ******************************************************************************************/
-/*
-emlformat.unpack = function(eml, directory, options, callback) {
-  // ... (Code removed: requires Node.js 'fs' and 'path')
-};
-*/
 
-/******************************************************************************************
- * Parses EML file content and return user-friendly object.
- * @params data        EML structure
- * @params options     EML build options
- * @params callback    Callback function(error, data)
- ******************************************************************************************/
 emlformat.build = function(data, options, callback) {
-  //Shift arguments
+  // ... (build logic remains the same, using the polyfilled Buffer)
+  // Shift arguments
   if (typeof options == "function" && typeof callback == "undefined") {
     callback = options;
     options = null;
@@ -552,13 +560,8 @@ emlformat.build = function(data, options, callback) {
   }
 };
 
-/******************************************************************************************
- * Parses EML file content and return user-friendly object.
- * @params eml         EML file content or object from 'parse'
- * @params options     EML parse options
- * @params callback    Callback function(error, data)
- ******************************************************************************************/
 emlformat.read = function(eml, options, callback) {
+  // ... (read logic remains the same)
   //Shift arguments
   if (typeof options == "function" && typeof callback == "undefined") {
     callback = options;
@@ -755,12 +758,6 @@ emlformat.read = function(eml, options, callback) {
   }
 };
 
-/******************************************************************************************
- * Parses EML file content and returns object-oriented representation of the content.
- * @params eml         EML file content
- * @params options     EML parse options
- * @params callback    Callback function(error, data)
- ******************************************************************************************/
 emlformat.parse = function(eml, options, callback) {
   //Shift arguments
   if (typeof options == "function" && typeof callback == "undefined") {
@@ -787,10 +784,8 @@ emlformat.parse = function(eml, options, callback) {
   }
 };
 
-/******************************************************************************************
- * Parses EML file content.
- ******************************************************************************************/
 function parseRecursive(lines, start, parent, options) {
+  // ... (parseRecursive logic remains the same)
   var boundary = null;
   var lastHeaderName = "";
   var findBoundary = "";
@@ -928,23 +923,102 @@ function parseRecursive(lines, start, parent, options) {
   }
 }
 
-// FIX: Removed the Node.js specific line `module.exports = emlformat;`
 
+/******************************************************************************************
+ * CSS Inlining Capability (Uses browser's DOM for style computation)
+ ******************************************************************************************/
+function inlineStyles(htmlString) {
+    if (!htmlString) return '';
+    
+    // Create a temporary, isolated DOM environment
+    const tempIframe = document.createElement('iframe');
+    tempIframe.style.display = 'none';
+    document.body.appendChild(tempIframe);
+    
+    try {
+        const doc = tempIframe.contentDocument;
+        if (!doc) throw new Error("Could not create content document for inlining.");
+
+        doc.open();
+        // Wrap content in a full document structure for proper style resolution
+        doc.write('<html><head><style>body { padding: 0; margin: 0; }</style></head><body>' + htmlString + '</body></html>');
+        doc.close();
+
+        // Target the email body (assuming the EML parser gave us everything inside <body>...</body>)
+        const emailBody = doc.body;
+
+        // Iterate over all elements
+        const elements = emailBody.querySelectorAll('*');
+        const emptyEl = document.createElement('div'); // Used to compare default computed styles in the main window
+        document.body.appendChild(emptyEl); // Temporarily add to main DOM to get computed style reference
+
+        elements.forEach(el => {
+            const computedStyle = tempIframe.contentWindow.getComputedStyle(el);
+            const emptyStyle = window.getComputedStyle(emptyEl); // Default styles of an empty element
+            let inlineStyle = '';
+
+            // Iterate over all computed style properties
+            for (let i = 0; i < computedStyle.length; i++) {
+                const property = computedStyle[i];
+                const value = computedStyle.getPropertyValue(property);
+                
+                // Compare with an empty element's style to filter out most browser defaults (e.g., display: block;)
+                if (value !== emptyStyle.getPropertyValue(property)) {
+                    // Check if the style is not already set inline (to avoid duplicates)
+                    if (el.style.getPropertyValue(property) !== value) {
+                        inlineStyle += `${property}: ${value} !important;`; // Use !important for best email compatibility
+                    }
+                }
+            }
+            
+            // Prepend the new inline style to any existing inline styles
+            if (inlineStyle) {
+                const existingStyle = el.getAttribute('style') || '';
+                el.setAttribute('style', inlineStyle + existingStyle);
+            }
+        });
+
+        // Clean up the empty element
+        document.body.removeChild(emptyEl);
+
+        // Remove all <style> and <link> tags, as their content is now inline
+        emailBody.querySelectorAll('style, link[rel="stylesheet"]').forEach(node => node.remove());
+
+        // Return the HTML content of the modified body
+        // We only return the innerHTML of the body to keep the output clean
+        return emailBody.innerHTML;
+
+    } finally {
+        // Clean up the temporary DOM (iframe)
+        document.body.removeChild(tempIframe);
+    }
+}
     </script>
 </head>
 <body>
 
     <div class="converter-container">
-        <h1>Robust EML to HTML Converter</h1>
+        <h1>Robust EML to HTML Converter with CSS Inliner</h1>
         <p class="description">Paste the full source code of your EML file below. The tool will extract, decode, and display the clean HTML content for you.</p>
 
         <textarea id="emlInput" placeholder="Paste your .eml file content here..."></textarea>
+        
+        <div class="options-group">
+            <label class="option-item" for="inlineCssCheck">
+                <input type="checkbox" id="inlineCssCheck" checked>
+                Apply CSS Inlining (Recommended for Email Compatibility)
+            </label>
+        </div>
+
         <button id="convertBtn">Convert to HTML</button>
         <div id="status"></div>
 
         <div class="output-header">
             <h2>Converted HTML Code</h2>
-            <button id="copyBtn">Copy to Clipboard</button>
+            <div class="header-buttons">
+                <button id="copyBtn">Copy to Clipboard</button>
+                <button id="downloadBtn">Download HTML</button>
+            </div>
         </div>
         <pre><code id="htmlOutput">Your clean HTML code will appear here...</code></pre>
 
@@ -973,18 +1047,41 @@ function parseRecursive(lines, start, parent, options) {
             const emlInput = document.getElementById('emlInput');
             const convertBtn = document.getElementById('convertBtn');
             const copyBtn = document.getElementById('copyBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
             const statusEl = document.getElementById('status');
             const htmlOutput = document.getElementById('htmlOutput');
             const htmlPreview = document.getElementById('htmlPreview');
+            const inlineCssCheck = document.getElementById('inlineCssCheck');
 
             function updateStatus(message, type) {
                 statusEl.textContent = message;
                 statusEl.className = `status-${type}`;
                 statusEl.style.display = message ? 'block' : 'none';
             }
+            
+            const placeholderTexts = [
+                'Your clean HTML code will appear here...',
+                '...',
+                'Parsing failed.',
+                'Decoding failed.',
+                'Conversion failed:',
+                'An error prevented the conversion. Check the console for technical details.',
+                'Please paste EML content first.'
+            ];
+            
+            function isOutputReady() {
+                const code = htmlOutput.textContent;
+                return code && !placeholderTexts.some(p => code.includes(p)) && code.trim() !== '';
+            }
+            
+            function getFullHtmlDoc(bodyContent) {
+                // Creates a full, minimal HTML document for a clean download
+                return `<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="UTF-8">\n  <title>Converted Email</title>\n</head>\n<body>\n${bodyContent}\n</body>\n</html>`;
+            }
 
             function handleEmlConversion() {
                 const emlContent = emlInput.value;
+                const shouldInline = inlineCssCheck.checked;
 
                 if (!emlContent.trim()) {
                     updateStatus('Error: Input is empty. Please paste your EML content.', 'error');
@@ -1005,7 +1102,7 @@ function parseRecursive(lines, start, parent, options) {
                             return;
                         }
                         
-                        // Step 2 (The FIX): Read the parsed structure to decode content and attachments
+                        // Step 2: Read the parsed structure to decode content and attachments
                         emlformat.read(parsedData, (readError, finalData) => {
                             if (readError || !finalData) {
                                 const errorMessage = 'Error: Failed to decode EML body content.';
@@ -1015,16 +1112,29 @@ function parseRecursive(lines, start, parent, options) {
                                 return;
                             }
 
-                            const finalHtml = finalData.html;
+                            let finalHtml = finalData.html;
 
                             if (finalHtml && typeof finalHtml === 'string') {
+                                
+                                if (shouldInline) {
+                                    updateStatus('Applying CSS Inlining...', 'info');
+                                    try {
+                                        finalHtml = inlineStyles(finalHtml);
+                                        updateStatus('Conversion and Inlining Successful!', 'success');
+                                    } catch (inlineError) {
+                                        console.error('CSS Inlining Error:', inlineError);
+                                        updateStatus('Warning: Inlining failed. Displaying raw HTML.', 'warning');
+                                    }
+                                } else {
+                                    updateStatus('Conversion Successful! (Raw HTML)', 'success');
+                                }
+
                                 htmlOutput.textContent = finalHtml;
                                 htmlPreview.srcdoc = finalHtml;
-                                updateStatus('Conversion Successful!', 'success');
                                 console.log('EML conversion successful. Found data:', finalData);
                             } else {
                                 const warningMessage = 'Warning: An HTML version of this email could not be found.';
-                                updateStatus(warningMessage, 'warning'); // Changed to warning since it's not a fatal script error
+                                updateStatus(warningMessage, 'warning');
                                 htmlOutput.textContent = `The EML file does not contain a 'text/html' part. It might be a plain-text only email. The plain text content is: \n\n${finalData.text || '(No text content found either)'}`;
                                 htmlPreview.srcdoc = `<p style="padding: 20px; color: #856404; background-color: #fff3cd; border: 1px solid #ffeeba; border-radius: 4px;">${warningMessage}<br>Displaying plain text content in output code block.</p>`;
                                 console.warn('Could not find HTML content. Full read data object:', finalData);
@@ -1039,6 +1149,31 @@ function parseRecursive(lines, start, parent, options) {
                 }
             }
             
+            function handleDownload() {
+                if (!isOutputReady()) {
+                    updateStatus('Nothing to download yet. Please convert an EML file first.', 'error');
+                    return;
+                }
+                
+                const htmlContent = htmlOutput.textContent;
+                // Create a full HTML document including necessary boilerplate
+                const fullHtml = getFullHtmlDoc(htmlContent);
+                
+                const blob = new Blob([fullHtml], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'converted_email.html';
+                
+                // Trigger download
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                updateStatus('Download started!', 'success');
+            }
+
             convertBtn.addEventListener('click', () => {
                 updateStatus('', 'info');
                 htmlOutput.textContent = '...';
@@ -1058,32 +1193,28 @@ function parseRecursive(lines, start, parent, options) {
             });
             
             copyBtn.addEventListener('click', () => {
-                const code = htmlOutput.textContent;
-                const placeholderTexts = [
-                    'Your clean HTML code will appear here...',
-                    '...',
-                    'Parsing failed. Please verify the EML source code is complete and valid.',
-                    'Decoding failed. An issue occurred while reading the content parts.',
-                    'Conversion failed: Core library is missing.'
-                ];
-
-                if (code && !placeholderTexts.some(p => code.includes(p)) && code.trim() !== '') {
-                    navigator.clipboard.writeText(code).then(() => {
-                        const originalBtnText = copyBtn.textContent;
-                        copyBtn.textContent = 'Copied!';
-                        copyBtn.style.backgroundColor = 'var(--success-color)';
-                        setTimeout(() => {
-                            copyBtn.textContent = originalBtnText;
-                            copyBtn.style.backgroundColor = '#6c757d'; // Restore original hover color
-                        }, 2000);
-                    }).catch(err => {
-                        updateStatus('Failed to copy to clipboard.', 'error');
-                        console.error('Clipboard write error:', err);
-                    });
-                } else {
+                if (!isOutputReady()) {
                     updateStatus('Nothing to copy yet. Please convert an EML file first.', 'error');
+                    return;
                 }
+                
+                const code = htmlOutput.textContent;
+
+                navigator.clipboard.writeText(code).then(() => {
+                    const originalBtnText = copyBtn.textContent;
+                    copyBtn.textContent = 'Copied!';
+                    copyBtn.style.backgroundColor = 'var(--success-color)';
+                    setTimeout(() => {
+                        copyBtn.textContent = originalBtnText;
+                        copyBtn.style.backgroundColor = '#6c757d'; // Restore original color
+                    }, 2000);
+                }).catch(err => {
+                    updateStatus('Failed to copy to clipboard.', 'error');
+                    console.error('Clipboard write error:', err);
+                });
             });
+
+            downloadBtn.addEventListener('click', handleDownload);
 
             statusEl.style.display = 'none';
         });
