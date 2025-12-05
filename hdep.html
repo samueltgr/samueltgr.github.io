@@ -1,0 +1,131 @@
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    * { box-sizing: border-box; }
+
+    body{
+      margin: 0;
+      padding: 16px;
+      background-color: #f6e9df;
+      display: flex;
+      justify-content: center;
+      align-items: center; /* key: prevents full-height stretching */
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .tgr-pass {
+      --ink: #1c2f4f;
+      --bg: #ffffff;
+      --padY: 16px;
+      --padX: 16px;
+
+      font-family: BrownStd, Arial, sans-serif;
+      width: 100%;
+      max-width: 980px;
+
+      background: var(--bg);
+      border-radius: 18px;
+      overflow: hidden;
+
+      border: 1px solid rgba(0,0,0,.06);
+      box-shadow: 0 10px 28px rgba(0,0,0,.18);
+    }
+
+    .tgr-pass__inner {
+      display: flex;
+      align-items: stretch;
+    }
+
+    .tgr-pass__media,
+    .tgr-pass__content {
+      padding: var(--padY) var(--padX);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-width: 0;
+    }
+
+    .tgr-pass__media { flex: 0 0 44%; }
+
+    .tgr-pass__img {
+      width: 100%;
+      height: 100%;
+      min-height: clamp(180px, 24vw, 280px);
+      border-radius: 8px;
+      object-fit: cover;
+      display: block;
+      background: #e9e9e9;
+    }
+
+    .tgr-pass__content {
+      flex: 1;
+      color: var(--ink);
+      gap: 14px;
+    }
+
+    .tgr-pass__title {
+      margin: 0;
+      text-transform: uppercase;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      line-height: 1.05;
+      font-size: clamp(28px, 7vw, 54px);
+    }
+
+    .tgr-pass__subtitle {
+      margin: 0;
+      font-weight: 500;
+      font-size: clamp(16px, 4.2vw, 20px);
+    }
+
+    .tgr-pass__note {
+      margin: 0;
+      font-family: "Lyon Text NYT", serif;
+      font-style: italic;
+      font-weight: 300;
+      opacity: 0.95;
+      font-size: clamp(14px, 3.8vw, 16px);
+    }
+
+    @media (max-width: 720px) {
+      body { padding: 12px; } /* removed align-items: stretch */
+
+      .tgr-pass__inner { flex-direction: column; }
+      .tgr-pass__media { flex: 0 0 auto; }
+      .tgr-pass { border-radius: 16px; }
+
+      .tgr-pass__media,
+      .tgr-pass__content { padding: 16px; }
+
+      .tgr-pass__img {
+        height: auto;
+        min-height: 0;
+        aspect-ratio: 16 / 9;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <section class="tgr-pass" aria-label="Hot Desk Explorer Pass">
+    <div class="tgr-pass__inner">
+      <div class="tgr-pass__media">
+        <img
+          class="tgr-pass__img"
+          src="https://5912729.fs1.hubspotusercontent-na2.net/hubfs/5912729/HDEPBANNER.png"
+          alt="Hot desk image"
+          loading="lazy"
+        />
+      </div>
+
+      <div class="tgr-pass__content">
+        <h1 class="tgr-pass__title">HOT DESK<br/>EXPLORER PASS</h1>
+        <p class="tgr-pass__subtitle">One Pass, Endless Possibilities</p>
+        <p class="tgr-pass__note">30 Days of Unlimited Access to Premium Workspaces</p>
+      </div>
+    </div>
+  </section>
+</body>
+</html>
