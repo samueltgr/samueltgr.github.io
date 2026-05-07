@@ -1,0 +1,999 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Workspace Cost & Flexibility Calculator</title>
+  <style>
+    :root {
+      --bg: #f7f3ed;
+      --card: #fffdf9;
+      --ink: #0f2238;
+      --muted: #66758a;
+      --line: #e4ded5;
+      --navy: #062b49;
+      --navy-2: #0d3a5d;
+      --amber: #ad6b2d;
+      --amber-soft: #fff2df;
+      --sage: #edf3e8;
+      --sage-border: #cdddc4;
+      --sand: #f4eee6;
+      --blue-soft: #edf4f8;
+      --shadow: 0 20px 60px rgba(15, 34, 56, 0.11);
+      --transition: 180ms ease;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(255,255,255,0.95), transparent 34rem),
+        linear-gradient(135deg, #fbf8f3 0%, var(--bg) 52%, #f2ece3 100%);
+      min-height: 100vh;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+      border-radius: 0 !important;
+    }
+
+    .page {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 38px 0 54px;
+    }
+
+    .calculator {
+      display: grid;
+      grid-template-columns: minmax(0, 0.93fr) minmax(0, 1.07fr);
+      gap: 22px;
+      align-items: stretch;
+    }
+
+    .panel {
+      background: rgba(255, 253, 249, 0.88);
+      border: 1px solid rgba(228, 222, 213, 0.92);
+      box-shadow: var(--shadow);
+      padding: clamp(22px, 3vw, 34px);
+      backdrop-filter: blur(12px);
+      overflow: hidden;
+    }
+
+    .panel h2 {
+      margin: 0 0 26px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(25px, 3vw, 32px);
+      line-height: 1.15;
+      font-weight: 500;
+      letter-spacing: -0.025em;
+    }
+
+    .field {
+      position: relative;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      padding: 0 0 20px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .field:last-of-type {
+      border-bottom: 0;
+      margin-bottom: 24px;
+      padding-bottom: 0;
+    }
+
+    .icon {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 26px;
+      height: 26px;
+      display: inline-grid;
+      place-items: center;
+      color: var(--navy);
+      margin-top: 0;
+    }
+
+    .field-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+      min-height: 26px;
+      padding-left: 42px;
+    }
+
+    label {
+      font-size: 14px;
+      font-weight: 750;
+      letter-spacing: -0.01em;
+    }
+
+    .helper {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 5px;
+      line-height: 1.45;
+    }
+
+    .control-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .input,
+    select {
+      width: 100%;
+      border: 1px solid #d9d4cc;
+      background: #fffefa;
+      color: var(--ink);
+      height: 48px;
+      padding: 0 14px;
+      outline: none;
+      transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+    }
+
+    .input:focus,
+    select:focus {
+      border-color: var(--navy-2);
+      box-shadow: 0 0 0 4px rgba(6, 43, 73, 0.08);
+      background: #fff;
+    }
+
+    input[type="number"] {
+      appearance: textfield;
+      -moz-appearance: textfield;
+    }
+
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    .stepper {
+      display: grid;
+      grid-template-columns: 72px minmax(90px, 1fr) 72px;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .stepper button {
+      height: 48px;
+      border: 1px solid #d9d4cc;
+      background: #fffefa;
+      color: var(--navy);
+      cursor: pointer;
+      transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition), background var(--transition);
+    }
+
+    .stepper button:hover {
+      border-color: var(--navy-2);
+      box-shadow: 0 8px 18px rgba(6, 43, 73, 0.08);
+      transform: translateY(-1px);
+    }
+
+    .stepper input {
+      text-align: center;
+    }
+
+    .tabs {
+      display: inline-flex;
+      border: 1px solid #d9d4cc;
+      overflow: hidden;
+      background: #fffefa;
+      flex: 0 0 auto;
+    }
+
+    .tabs button {
+      min-width: 72px;
+      height: 48px;
+      padding: 0 14px;
+      border: 0;
+      border-right: 1px solid #d9d4cc;
+      background: transparent;
+      color: #3c4b5e;
+      cursor: pointer;
+      transition: background var(--transition), color var(--transition);
+    }
+
+    .tabs button:last-child {
+      border-right: 0;
+    }
+
+    .tabs button.active {
+      background: var(--navy);
+      color: #fff;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1);
+    }
+
+    .currency-tabs button {
+      min-width: 54px;
+    }
+
+    .range-wrap {
+      display: grid;
+      grid-template-columns: 42px minmax(0, 1fr) 58px;
+      align-items: center;
+      gap: 10px;
+      margin: 6px 0 16px;
+    }
+
+    .range-wrap span {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .range-wrap .max {
+      text-align: right;
+    }
+
+    .util-top {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 12px;
+      min-height: 26px;
+      padding-left: 42px;
+    }
+
+    .util-value {
+      font-size: 28px;
+      font-weight: 650;
+      color: var(--navy);
+      letter-spacing: -0.04em;
+      transition: color var(--transition);
+    }
+
+    .util-value.over-capacity {
+      color: var(--amber);
+    }
+
+    input[type="range"] {
+      width: 100%;
+      cursor: pointer;
+      accent-color: var(--navy);
+    }
+
+    input[type="range"].over-capacity {
+      accent-color: var(--amber);
+    }
+
+    .desk-visual-wrap {
+      width: calc(100% - 100px);
+      margin: 0 auto;
+    }
+
+    .desks {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .desk {
+      color: #bdb8b0;
+      transition: color 220ms ease, transform 220ms ease, filter 220ms ease;
+    }
+
+    .desk.active {
+      color: var(--navy);
+      transform: translateY(-2px);
+      filter: drop-shadow(0 6px 8px rgba(6, 43, 73, 0.16));
+    }
+
+    .desk.over-capacity {
+      color: var(--amber);
+    }
+
+    .scale-buttons {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      border: 1px solid #d9d4cc;
+      background: #fffefa;
+    }
+
+    .scale-buttons button {
+      height: 48px;
+      border: 0;
+      border-right: 1px solid #d9d4cc;
+      background: transparent;
+      color: #3c4b5e;
+      cursor: pointer;
+      transition: background var(--transition), color var(--transition);
+    }
+
+    .scale-buttons button:last-child {
+      border-right: 0;
+    }
+
+    .scale-buttons button.active {
+      background: var(--navy);
+      color: #fff;
+    }
+
+    .primary-btn,
+    .secondary-btn {
+      width: 100%;
+      min-height: 58px;
+      font-weight: 760;
+      cursor: pointer;
+      transition: transform var(--transition), box-shadow var(--transition), background var(--transition);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 14px 18px;
+    }
+
+    .primary-btn {
+      border: 1px solid var(--navy);
+      color: #fff;
+      background: linear-gradient(135deg, var(--navy), #073b63);
+      box-shadow: 0 14px 26px rgba(6, 43, 73, 0.2);
+    }
+
+    .primary-btn:hover,
+    .secondary-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 18px 30px rgba(6, 43, 73, 0.15);
+    }
+
+    .secondary-btn {
+      border: 1.5px solid var(--navy);
+      color: var(--navy);
+      background: #fffefa;
+      margin-top: 16px;
+    }
+
+    .lead-capture {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      max-height: 0;
+      opacity: 0;
+      transform: translateX(28px);
+      overflow: hidden;
+      transition: max-height 320ms ease, opacity 260ms ease, transform 320ms ease, margin-top 320ms ease;
+      margin-top: 0;
+    }
+
+    .lead-capture.revealed {
+      max-height: 150px;
+      opacity: 1;
+      transform: translateX(0);
+      margin-top: 12px;
+    }
+
+    .lead-capture button {
+      min-height: 52px;
+      line-height: 1;
+      padding: 0 20px;
+      border: 1px solid var(--navy);
+      color: #fff;
+      background: var(--navy);
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .result-card {
+      padding: 24px;
+      display: grid;
+      grid-template-columns: 76px minmax(0, 1fr);
+      gap: 18px;
+      align-items: center;
+      margin-bottom: 16px;
+      border: 1px solid transparent;
+      min-width: 0;
+    }
+
+    .result-card.sage {
+      background: linear-gradient(135deg, var(--sage), #f8faf5);
+      border-color: var(--sage-border);
+    }
+
+    .badge {
+      width: 64px;
+      height: 64px;
+      display: grid;
+      place-items: center;
+      background: rgba(255,255,255,0.4);
+      border: 1px solid rgba(15,34,56,0.16);
+      color: var(--navy);
+    }
+
+    .result-label {
+      font-size: 14px;
+      font-weight: 760;
+      margin-bottom: 8px;
+    }
+
+    .big-number {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(34px, 4.2vw, 52px);
+      line-height: 1;
+      letter-spacing: -0.045em;
+      overflow-wrap: normal;
+      word-break: normal;
+    }
+
+    .money-prefix,
+    .money-digits {
+      display: inline;
+    }
+
+    .insights {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin: 18px 0 18px;
+    }
+
+    .insights.two-column {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .insight {
+      border: 1px solid var(--line);
+      background: rgba(255, 254, 250, 0.78);
+      padding: 18px 16px;
+      min-height: 176px;
+      min-width: 0;
+    }
+
+    .insight.warning {
+      background: var(--amber-soft);
+      border-color: rgba(173, 107, 45, 0.3);
+    }
+
+    .mini-badge {
+      width: 44px;
+      height: 44px;
+      display: grid;
+      place-items: center;
+      background: var(--sand);
+      margin-bottom: 14px;
+      color: var(--navy);
+    }
+
+    .mini-badge.blue {
+      background: var(--blue-soft);
+    }
+
+    .mini-badge.amber {
+      background: #fae6cd;
+      color: var(--amber);
+    }
+
+    .insight h3 {
+      margin: 0 0 10px;
+      font-size: 14px;
+      line-height: 1.25;
+    }
+
+    .insight strong {
+      display: block;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(25px, 3vw, 32px);
+      line-height: 1;
+      font-weight: 500;
+      letter-spacing: -0.035em;
+      overflow-wrap: normal;
+      word-break: normal;
+    }
+
+    .insight p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .advisory {
+      border-top: 1px solid var(--line);
+      padding-top: 18px;
+      display: grid;
+      grid-template-columns: 46px minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+      color: #33445a;
+      line-height: 1.48;
+    }
+
+    .star {
+      width: 44px;
+      height: 44px;
+      border: 1px solid #d8bfaa;
+      color: #9a754d;
+      display: grid;
+      place-items: center;
+      background: #fffaf4;
+    }
+
+    .note {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+      margin-top: 14px;
+    }
+
+    @media (max-width: 980px) {
+      .calculator {
+        grid-template-columns: 1fr;
+      }
+
+      .panel {
+        padding: 24px;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .cost-row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .cost-row .tabs,
+      .cost-row .tabs button {
+        width: 100%;
+      }
+
+      .cost-row .tabs button {
+        min-width: 0;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .lead-capture {
+        grid-template-columns: 1fr;
+      }
+
+      .lead-capture.revealed {
+        max-height: 140px;
+      }
+
+      .big-number .money-prefix,
+      .insight strong .money-prefix {
+        display: block;
+        font-size: 0.72em;
+        line-height: 0.95;
+        letter-spacing: -0.02em;
+      }
+
+      .big-number .money-digits,
+      .insight strong .money-digits {
+        display: block;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="calculator" aria-label="Workspace calculator">
+      <form class="panel" id="calculatorForm">
+        <h2>Tell us about your current workspace</h2>
+
+        <div class="field">
+          <div class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="4"/><path d="M21 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <div>
+            <div class="field-top">
+              <label for="employees">Company size</label>
+            </div>
+            <div class="stepper">
+              <button type="button" id="minusEmployees" aria-label="Decrease company size">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m15 18-6-6 6-6"/></svg>
+              </button>
+              <input class="input" id="employees" type="number" min="1" max="5000" value="25" inputmode="numeric" />
+              <button type="button" id="plusEmployees" aria-label="Increase company size">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m9 18 6-6-6-6"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 21h18"/><path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"/><path d="M9 7h1"/><path d="M14 7h1"/><path d="M9 11h1"/><path d="M14 11h1"/><path d="M9 15h1"/><path d="M14 15h1"/></svg>
+          </div>
+          <div>
+            <div class="field-top">
+              <label for="officeSize">Current office size</label>
+            </div>
+            <div class="control-row">
+              <input class="input" id="officeSize" type="number" min="1" value="2500" inputmode="decimal" />
+              <div class="tabs" role="tablist" aria-label="Office size unit">
+                <button type="button" class="active" data-unit="sqft">sq ft</button>
+                <button type="button" data-unit="sqm">sq m</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="9"/><path d="M15 8.5h-4.2a2.3 2.3 0 0 0 0 4.6h2.4a2.3 2.3 0 1 1 0 4.6H9"/><path d="M12 6.8v2"/><path d="M12 17.7v2"/></svg>
+          </div>
+          <div>
+            <div class="field-top">
+              <label for="monthlyCost">Monthly office cost</label>
+            </div>
+            <div class="control-row cost-row">
+              <input class="input" id="monthlyCost" type="number" min="0" value="30000" inputmode="decimal" />
+              <div class="tabs currency-tabs" role="tablist" aria-label="Currency">
+                <button type="button" class="active" data-currency="SGD">SGD</button>
+                <button type="button" data-currency="HKD">HKD</button>
+                <button type="button" data-currency="THB">THB</button>
+                <button type="button" data-currency="AUD">AUD</button>
+                <button type="button" data-currency="USD">USD</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 17l5-5 4 4 8-10"/><path d="M14 6h6v6"/></svg>
+          </div>
+          <div>
+            <div class="util-top">
+              <div>
+                <label for="utilisation">Average office utilisation</label>
+                <div class="helper">Drag beyond 100% to model overflow days where flexible hot desk access could support the team without expanding a lease.</div>
+              </div>
+              <div class="util-value" id="utilValueWrap"><span id="utilValue">80</span>%</div>
+            </div>
+            <div class="range-wrap">
+              <span>10%</span>
+              <input id="utilisation" type="range" min="10" max="130" step="5" value="80" />
+              <span class="max">130%</span>
+            </div>
+            <div class="desk-visual-wrap">
+              <div class="desks" id="desks" aria-hidden="true"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="4" width="18" height="13" rx="0"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
+          </div>
+          <div>
+            <div class="field-top">
+              <label for="workModel">Current work model</label>
+            </div>
+            <select id="workModel">
+              <option>Office-first</option>
+              <option selected>Hybrid</option>
+              <option>Remote-first with office needs</option>
+              <option>Regional / satellite team</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 18h16"/><path d="M6 18V7h5v11"/><path d="M13 18V4h5v14"/><path d="M8 10h1"/><path d="M8 13h1"/><path d="M15 7h1"/><path d="M15 10h1"/><path d="M15 13h1"/></svg>
+          </div>
+          <div>
+            <div class="field-top">
+              <label>How often do you review your workspace needs?</label>
+            </div>
+            <div class="helper" style="margin-bottom: 10px;">Select the time between workspace reviews, in years.</div>
+            <div class="scale-buttons" role="radiogroup" aria-label="Time between workspace review">
+              <button type="button" data-scale="0.5">0.5</button>
+              <button type="button" data-scale="1">1</button>
+              <button type="button" data-scale="1.5">1.5</button>
+              <button type="button" data-scale="2">2</button>
+              <button type="button" data-scale="2.5">2.5</button>
+              <button type="button" data-scale="3" class="active">3+</button>
+            </div>
+          </div>
+        </div>
+
+        <button class="primary-btn" type="submit">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="0"/><path d="M8 7h8"/><path d="M8 11h2"/><path d="M12 11h2"/><path d="M16 11h0"/><path d="M8 15h2"/><path d="M12 15h2"/><path d="M16 15h0"/></svg>
+          Calculate My Workspace Opportunity
+        </button>
+      </form>
+
+      <aside class="panel" aria-live="polite">
+        <h2>Your workspace opportunity</h2>
+
+        <div class="result-card sage">
+          <div class="badge" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M19 3C12 4 6 9 5 16c-.5 3.5 2.5 5.5 5.5 4.5C17.5 18 21 10 19 3Z"/><path d="M5 21c3.7-5.2 7.3-8.5 12-11"/></svg>
+          </div>
+          <div>
+            <div class="result-label">Estimated annual cost of underused space</div>
+            <div class="big-number" id="annualWaste">S$72,000</div>
+          </div>
+        </div>
+
+        <div class="insights two-column">
+          <div class="insight">
+            <div class="mini-badge" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 2h8l3 3v17H5V2h3Z"/><path d="M8 9h8"/><path d="M8 13h8"/><path d="M8 17h5"/></svg>
+            </div>
+            <h3>Monthly unused-space cost</h3>
+            <strong id="monthlyWaste">S$6,000</strong>
+          </div>
+
+          <div class="insight" id="spaceHealthCard">
+            <div class="mini-badge blue" id="spaceHealthBadge" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 21h16"/><path d="M6 21V5h12v16"/><path d="M9 9h6"/><path d="M9 13h6"/><path d="M9 17h3"/></svg>
+            </div>
+            <h3>Space efficiency</h3>
+            <strong id="spaceStatus">Optimised</strong>
+            <p id="spaceDetail">100 sq ft per employee based on current office size</p>
+          </div>
+        </div>
+
+        <div class="advisory">
+          <div class="star" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="m12 2.8 2.7 5.7 6.1.9-4.4 4.4 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.4 6.1-.9L12 2.8Z"/></svg>
+          </div>
+          <div id="advisoryText">Your current setup has room to work harder. A flexible workspace model could help reduce underused fixed space while giving the team room to scale on busier days.</div>
+        </div>
+
+        <button class="secondary-btn" type="button" id="revealLeadForm">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="0"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>
+          Request a Workspace Solution Review
+        </button>
+
+        <form class="lead-capture" id="leadForm">
+          <input class="input" id="email" type="email" placeholder="Enter your work email" aria-label="Work email" required />
+          <button type="submit">Submit</button>
+        </form>
+
+        <p class="note">Estimates are indicative and use 100 sq ft per employee as the space planning benchmark. A tailored review may include lease terms, fit-out, reinstatement, service charges and market-specific pricing.</p>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const state = {
+      unit: 'sqft',
+      currency: 'SGD',
+      reviewCycle: 3
+    };
+
+    const currencySymbols = {
+      SGD: 'S$',
+      HKD: 'HK$',
+      THB: '฿',
+      AUD: 'A$',
+      USD: 'US$'
+    };
+
+    const employeesInput = document.getElementById('employees');
+    const officeSizeInput = document.getElementById('officeSize');
+    const monthlyCostInput = document.getElementById('monthlyCost');
+    const utilisationInput = document.getElementById('utilisation');
+    const utilValue = document.getElementById('utilValue');
+    const utilValueWrap = document.getElementById('utilValueWrap');
+    const desks = document.getElementById('desks');
+    const workModel = document.getElementById('workModel');
+
+    const annualWaste = document.getElementById('annualWaste');
+    const monthlyWaste = document.getElementById('monthlyWaste');
+    const spaceHealthCard = document.getElementById('spaceHealthCard');
+    const spaceHealthBadge = document.getElementById('spaceHealthBadge');
+    const spaceStatus = document.getElementById('spaceStatus');
+    const spaceDetail = document.getElementById('spaceDetail');
+    const recommendation = document.getElementById('recommendation');
+    const advisoryText = document.getElementById('advisoryText');
+
+    function formatMoney(value) {
+      const rounded = Math.round(value / 100) * 100;
+      return `<span class="money-prefix">${currencySymbols[state.currency]}</span><span class="money-digits">${rounded.toLocaleString('en-US')}</span>`;
+    }
+
+    function getSqftValue() {
+      const size = Math.max(Number(officeSizeInput.value) || 0, 0);
+      return state.unit === 'sqm' ? size * 10.7639 : size;
+    }
+
+    function getSpaceAssessment(sqftPerEmployee, utilisation) {
+      const effectiveSqftPerEmployee = sqftPerEmployee / Math.max(utilisation / 100, 0.1);
+
+      if (utilisation > 100) {
+        return {
+          status: 'Overflow days',
+          detail: 'Demand is above fixed capacity. Hot desk memberships can absorb peak attendance without expanding your lease.',
+          warning: true
+        };
+      }
+
+      if (sqftPerEmployee < 80 && utilisation >= 85) {
+        return {
+          status: 'Tight',
+          detail: `${Math.round(sqftPerEmployee)} sq ft per employee. Close-to-full attendance may feel constrained versus a 100 sq ft benchmark.`,
+          warning: true
+        };
+      }
+
+      if (effectiveSqftPerEmployee >= 140) {
+        return {
+          status: 'Underutilised',
+          detail: `${Math.round(effectiveSqftPerEmployee)} effective sq ft per active employee on a typical day. There may be room to optimise.`,
+          warning: false
+        };
+      }
+
+      if (effectiveSqftPerEmployee < 90) {
+        return {
+          status: 'High density',
+          detail: `${Math.round(effectiveSqftPerEmployee)} effective sq ft per active employee. Flexible overflow access may help during busier days.`,
+          warning: true
+        };
+      }
+
+      return {
+        status: 'Optimised',
+        detail: `${Math.round(effectiveSqftPerEmployee)} effective sq ft per active employee, close to the 100 sq ft benchmark.`,
+        warning: false
+      };
+    }
+
+    function getRecommendation(assessment, model, utilisation) {
+      if (utilisation > 100) return 'Hot desk memberships for peak attendance days';
+      if (assessment.status === 'Tight' || assessment.status === 'High density') return 'Flexible overflow access with meeting room support';
+      if (assessment.status === 'Underutilised') return 'Optimised private office with flexible access';
+      if (state.reviewCycle >= 2.5) return 'Flexible office model for changing team needs';
+      if (model === 'Remote-first with office needs') return 'Flexible membership with meeting room access';
+      if (model === 'Regional / satellite team') return 'Premium satellite base with flexible access';
+      if (model === 'Office-first') return 'Serviced private office with room to scale';
+      return 'Private office with flexible access';
+    }
+
+    function getAdvisory(assessment, model, utilisation) {
+      if (utilisation > 100) {
+        return 'Your team may exceed fixed office capacity on busier days. Flexible hot desk memberships can help accommodate peak attendance without committing to a larger long-term lease.';
+      }
+
+      if (assessment.status === 'Tight' || assessment.status === 'High density') {
+        return 'Your current footprint may be efficient, but close-to-full attendance could feel constrained. Flexible access can create breathing room without locking the business into more permanent space.';
+      }
+
+      if (assessment.status === 'Underutilised') {
+        return 'Your current setup appears to have more space than your average daily usage requires. A flexible workspace model could reduce fixed overheads while preserving access to premium work settings.';
+      }
+
+      if (state.reviewCycle >= 2) {
+        return 'Longer gaps between workspace reviews can leave businesses carrying space that no longer reflects how teams work. A flexible workspace model makes it easier to scale up, down or differently as needs change.';
+      }
+
+      if (model === 'Remote-first with office needs') {
+        return 'A flexible workspace model can support focused work, client meetings and collaboration days without long-term office overheads.';
+      }
+
+      return 'Your current setup has room to work harder. A flexible workspace model could help reduce underused fixed space while giving the team room to scale on busier days.';
+    }
+
+    function renderDesks(utilisation) {
+      const visibleUtilisation = Math.min(utilisation, 100);
+      const activeCount = Math.round(visibleUtilisation / 10);
+      const isOverCapacity = utilisation > 100;
+      desks.innerHTML = '';
+
+      for (let i = 1; i <= 10; i++) {
+        const desk = document.createElement('div');
+        desk.className = `desk${i <= activeCount ? ' active' : ''}${isOverCapacity ? ' over-capacity' : ''}`;
+        desk.innerHTML = `
+          <svg viewBox="0 0 32 32" width="100%" height="32" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 14h16v5H8z" fill="currentColor" stroke="none"></path>
+            <path d="M10 19v8"></path>
+            <path d="M22 19v8"></path>
+            <path d="M7 27h18"></path>
+            <path d="M11 10a5 5 0 0 1 10 0v4H11v-4z" fill="currentColor" stroke="none"></path>
+          </svg>
+        `;
+        desks.appendChild(desk);
+      }
+    }
+
+    function calculate() {
+      const employees = Math.max(Number(employeesInput.value) || 1, 1);
+      const monthlyCost = Math.max(Number(monthlyCostInput.value) || 0, 0);
+      const utilisation = Math.min(Math.max(Number(utilisationInput.value) || 10, 10), 130);
+      const unusedPercentage = Math.max(100 - utilisation, 0);
+      const annualCost = monthlyCost * 12;
+      const waste = annualCost * (unusedPercentage / 100);
+      const sqft = getSqftValue();
+      const sqftPerEmployee = sqft / employees;
+      const assessment = getSpaceAssessment(sqftPerEmployee, utilisation);
+
+      annualWaste.innerHTML = formatMoney(waste);
+      monthlyWaste.innerHTML = formatMoney(waste / 12);
+      spaceStatus.textContent = assessment.status;
+      spaceDetail.textContent = assessment.detail;
+      recommendation.textContent = getRecommendation(assessment, workModel.value, utilisation);
+      advisoryText.textContent = getAdvisory(assessment, workModel.value, utilisation);
+
+      spaceHealthCard.classList.toggle('warning', assessment.warning);
+      spaceHealthBadge.classList.toggle('amber', assessment.warning);
+      spaceHealthBadge.classList.toggle('blue', !assessment.warning);
+    }
+
+    function updateVisualOnly() {
+      const utilisation = Math.min(Math.max(Number(utilisationInput.value) || 10, 10), 130);
+      const isOverCapacity = utilisation > 100;
+      utilValue.textContent = utilisation;
+      utilValueWrap.classList.toggle('over-capacity', isOverCapacity);
+      utilisationInput.classList.toggle('over-capacity', isOverCapacity);
+      renderDesks(utilisation);
+    }
+
+    document.getElementById('minusEmployees').addEventListener('click', () => {
+      employeesInput.value = Math.max((Number(employeesInput.value) || 1) - 1, 1);
+    });
+
+    document.getElementById('plusEmployees').addEventListener('click', () => {
+      employeesInput.value = (Number(employeesInput.value) || 0) + 1;
+    });
+
+    document.querySelectorAll('[data-unit]').forEach((button) => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('[data-unit]').forEach((btn) => btn.classList.remove('active'));
+        button.classList.add('active');
+        state.unit = button.dataset.unit;
+      });
+    });
+
+    document.querySelectorAll('[data-currency]').forEach((button) => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('[data-currency]').forEach((btn) => btn.classList.remove('active'));
+        button.classList.add('active');
+        state.currency = button.dataset.currency;
+      });
+    });
+
+    document.querySelectorAll('[data-scale]').forEach((button) => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('[data-scale]').forEach((btn) => btn.classList.remove('active'));
+        button.classList.add('active');
+        state.reviewCycle = Number(button.dataset.scale);
+      });
+    });
+
+    utilisationInput.addEventListener('input', updateVisualOnly);
+    utilisationInput.addEventListener('change', updateVisualOnly);
+
+    document.getElementById('calculatorForm').addEventListener('submit', (event) => {
+      event.preventDefault();
+      calculate();
+      document.querySelector('aside.panel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+
+    document.getElementById('revealLeadForm').addEventListener('click', () => {
+      const leadForm = document.getElementById('leadForm');
+      leadForm.classList.add('revealed');
+      setTimeout(() => document.getElementById('email').focus(), 180);
+    });
+
+    document.getElementById('leadForm').addEventListener('submit', (event) => {
+      event.preventDefault();
+      event.target.querySelector('button').textContent = 'Submitted';
+    });
+
+    updateVisualOnly();
+    calculate();
+  </script>
+</body>
+</html>
