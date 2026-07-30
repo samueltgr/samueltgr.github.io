@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MCV waterfall builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#14181d;
+    --ink-2:#4a545f;
+    --ink-3:#7d8794;
+    --line:#dcd9d2;
+    --paper:#f2efe9;
+    --card:#ffffff;
+    --accent:#1f5c4a;
+    --warn:#a3341f;
+    --sans:"Hanken Grotesk",ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font:15px/1.5 var(--sans);
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1360px;margin:0 auto;padding:28px 24px 64px}
+
+  header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+  h1{font-size:19px;letter-spacing:-.01em;margin:0;font-weight:700}
+  header p{margin:0;color:var(--ink-3);font-size:13.5px}
+
+  .rule{height:1px;background:var(--line);margin:16px 0 22px}
+
+  .cols{display:grid;grid-template-columns:minmax(300px,380px) 1fr;gap:26px;align-items:start}
+  @media (max-width:900px){.cols{grid-template-columns:1fr}}
+
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:4px}
+  .panel-hd{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:11px 14px;border-bottom:1px solid var(--line);
+  }
+  .panel-hd h2{
+    margin:0;font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2);
+  }
+  .panel-bd{padding:14px}
+
+  textarea{
+    width:100%;height:250px;resize:vertical;
+    border:1px solid var(--line);border-radius:3px;background:#fcfbf9;color:var(--ink);
+    padding:11px 12px;
+    font:12.5px/1.65 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    tab-size:12;
+  }
+  textarea:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:transparent}
+
+  .hint{margin:10px 0 0;font-size:12.5px;color:var(--ink-3)}
+  .hint code{background:#efece6;padding:1px 4px;border-radius:2px;font-size:12px}
+
+  .status{margin-top:12px;font-size:13px;min-height:20px}
+  .status.ok{color:var(--accent)}
+  .status.bad{color:var(--warn)}
+  #fontNote{margin:0 0 12px;font-size:12.5px;color:var(--warn);display:none}
+
+  .btns{display:flex;gap:8px;flex-wrap:wrap}
+  button{
+    font:inherit;font-size:13px;font-weight:500;
+    padding:7px 13px;border-radius:3px;cursor:pointer;
+    border:1px solid var(--ink);background:var(--ink);color:#fff;
+  }
+  button.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+  button.ghost:hover{border-color:var(--ink-3)}
+  button:hover{opacity:.88}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  #stage{
+    padding:18px;border-radius:3px;cursor:copy;
+    background-color:#fff;
+    background-image:
+      linear-gradient(45deg,#eceae5 25%,transparent 25%,transparent 75%,#eceae5 75%),
+      linear-gradient(45deg,#eceae5 25%,transparent 25%,transparent 75%,#eceae5 75%);
+    background-size:18px 18px;background-position:0 0,9px 9px;
+  }
+  #stage svg{display:block;width:100%;height:auto}
+  #stage.empty{display:flex;align-items:center;justify-content:center;min-height:280px;cursor:default;color:var(--ink-3);font-size:13.5px}
+
+  #toast{
+    position:fixed;left:50%;bottom:26px;transform:translate(-50%,14px);
+    background:var(--ink);color:#fff;padding:9px 16px;border-radius:3px;
+    font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;
+  }
+  #toast.show{opacity:1;transform:translate(-50%,0)}
+  @media (prefers-reduced-motion:reduce){#toast{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>MCV waterfall builder</h1>
+    <p>Paste the month's rows. The chart redraws as you type.</p>
+  </header>
+  <div class="rule"></div>
+
+  <div class="cols">
+    <section class="panel">
+      <div class="panel-hd"><h2>Pasted data</h2>
+        <button class="ghost" id="clear" type="button">Clear</button>
+      </div>
+      <div class="panel-bd">
+        <textarea id="input" spellcheck="false" aria-label="Paste spreadsheet rows"></textarea>
+        <p class="hint">Tab or comma separated. Header row optional. A last row with a blank label &mdash; or one labelled <code>Total</code> &mdash; is used as the total exactly as pasted; if there isn't one, the total is summed.</p>
+        <div class="status" id="status" role="status" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-hd">
+        <h2>Chart</h2>
+        <div class="btns">
+          <button class="ghost" id="download" type="button">Download PNG</button>
+          <button id="copy" type="button">Copy PNG</button>
+        </div>
+      </div>
+      <div class="panel-bd">
+        <p id="fontNote">Hanken Grotesk couldn't be loaded, so the PNG will use a fallback face. Check your connection and reload.</p>
+        <div id="stage" class="empty" title="Click to copy PNG">Paste your rows to draw the chart.</div>
+      </div>
+    </section>
+  </div>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+"use strict";
+
+/* ---------------------------------------------------------------- parsing */
+
+function nonEmptyLines(t){
+  return t.replace(/\r\n?/g,"\n").split("\n").filter(l=>l.trim()!=="");
+}
+function detectDelim(t){
+  if(t.indexOf("\t")>-1) return "\t";
+  if(t.indexOf(";")>-1 && t.indexOf(",")===-1) return ";";
+  return ",";
+}
+function splitRow(line,d){
+  if(d!==","){ return line.split(d).map(s=>s.trim()); }
+  const out=[]; let cur="", q=false;
+  for(let i=0;i<line.length;i++){
+    const c=line[i];
+    if(q){
+      if(c==='"'){ if(line[i+1]==='"'){cur+='"';i++;} else q=false; }
+      else cur+=c;
+    }else{
+      if(c==='"') q=true;
+      else if(c===","){ out.push(cur); cur=""; }
+      else cur+=c;
+    }
+  }
+  out.push(cur);
+  return out.map(s=>s.trim());
+}
+/* Unquoted CSV can split 12,500.0 into "12" + "500.0". Stitch those back. */
+function healThousands(cells){
+  let cur=cells.slice();
+  for(let pass=0;pass<3;pass++){
+    const out=[]; let changed=false;
+    for(let i=0;i<cur.length;i++){
+      const a=cur[i], b=cur[i+1];
+      if(b!==undefined && /^-?\(?\$?\s*\d{1,3}$/.test(a) && /^\d{3}(\.\d+)?\)?$/.test(b)){
+        out.push(a+b); i++; changed=true;
+      }else out.push(cur[i]);
+    }
+    cur=out;
+    if(!changed) break;
+  }
+  return cur;
+}
+function num(s){
+  if(s===undefined||s===null) return NaN;
+  let v=String(s).trim();
+  if(v==="") return NaN;
+  let neg=false;
+  if(/^\(.*\)$/.test(v)){ neg=true; v=v.slice(1,-1); }
+  v=v.replace(/[$\s,\u00a0]/g,"");
+  if(v==="-"||v==="") return NaN;
+  const n=Number(v);
+  if(!isFinite(n)) return NaN;
+  return neg?-n:n;
+}
+function looksHeader(cells){
+  const joined=cells.join(" ").toLowerCase();
+  if(/mcv/.test(joined)) return true;
+  return !cells.slice(1).some(c=>!isNaN(num(c)));
+}
+function mapHeader(cells){
+  let p=-1,m=-1,i2=-1;
+  cells.forEach((c,i)=>{
+    const k=String(c).toLowerCase().replace(/[^a-z+\-]/g,"");
+    if(k.indexOf("mcv")===-1) return;
+    if(/^i/.test(k)||k.indexOf("imcv")>-1){ if(i2<0) i2=i; }
+    else if(k.indexOf("+")>-1){ if(p<0) p=i; }
+    else if(k.indexOf("-")>-1){ if(m<0) m=i; }
+  });
+  return (p>-1&&m>-1)?{p:p,m:m,i:i2}:null;
+}
+
+function parse(text){
+  const lines=nonEmptyLines(text);
+  if(!lines.length) return {rows:[],err:null};
+  const d=detectDelim(text);
+
+  let table=lines.map(l=>{
+    let c=splitRow(l,d);
+    if(d==="," && c.length>4) c=healThousands(c);
+    return c;
+  });
+
+  let cols=null;
+  if(looksHeader(table[0])){
+    cols=mapHeader(table[0]);
+    table=table.slice(1);
+  }
+  if(!table.length) return {rows:[],err:"No data rows found under the header."};
+
+  const parsed=[];
+  for(const cells of table){
+    const label=String(cells[0]||"").trim();
+    let plus,minus,imcv;
+    if(cols){
+      plus=num(cells[cols.p]); minus=num(cells[cols.m]);
+      imcv=cols.i>-1?num(cells[cols.i]):NaN;
+    }else{
+      const nums=[];
+      for(let i=1;i<cells.length;i++){ const v=num(cells[i]); if(!isNaN(v)) nums.push(v); }
+      plus=nums[0]; minus=nums[1]; imcv=nums.length>2?nums[2]:NaN;
+    }
+    if(isNaN(plus)&&isNaN(minus)) continue;
+    if(isNaN(plus)||isNaN(minus)){
+      return {rows:[],err:'Row "'+(label||"(no label)")+'" is missing a +MCV or -MCV value.'};
+    }
+    minus=Math.abs(minus);
+    if(isNaN(imcv)) imcv=plus-minus;
+    parsed.push({label:label,plus:plus,minus:minus,imcv:imcv,isTotal:false});
+  }
+  if(!parsed.length) return {rows:[],err:"Couldn't find any numbers. Check that +MCV and -MCV are in the pasted range."};
+
+  let ti=-1;
+  for(let i=parsed.length-1;i>=0;i--){
+    if(parsed[i].label==="" || /^total\b/i.test(parsed[i].label)){ ti=i; break; }
+  }
+  let total=null, regions=parsed;
+  if(ti>-1){
+    total=parsed[ti];
+    total.isTotal=true;
+    if(!total.label) total.label="Total";
+    regions=parsed.filter((_,i)=>i!==ti);
+  }
+  if(!regions.length) return {rows:[],err:"Add at least one region row above the total."};
+  if(!total){
+    total={label:"Total",isTotal:true,
+      plus:regions.reduce((a,r)=>a+r.plus,0),
+      minus:regions.reduce((a,r)=>a+r.minus,0),
+      imcv:regions.reduce((a,r)=>a+r.imcv,0)};
+  }
+  return {rows:regions.concat([total]),err:null};
+}
+
+/* ------------------------------------------------------------- formatting */
+
+function money(v,forceSign){
+  const k=v/1000;
+  const mag=Math.abs(k).toFixed(1);
+  const parts=mag.split(".");
+  parts[0]=parts[0].replace(/\B(?=(\d{3})+(?!\d))/g,",");
+  const sign = forceSign==="-" ? "-" : (v<0?"-":"+");
+  return sign+"$"+parts.join(".")+"k";
+}
+function esc(s){
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+/* ------------------------------------------------------- webfont embedding */
+
+const FAMILY="Hanken Grotesk";
+const FONT_STACK="'Hanken Grotesk',Helvetica,Arial,sans-serif";
+const GF_CSS="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@700";
+
+function b64(buf){
+  const bytes=new Uint8Array(buf);
+  let s="";
+  for(let i=0;i<bytes.length;i+=0x8000){
+    s+=String.fromCharCode.apply(null,bytes.subarray(i,i+0x8000));
+  }
+  return btoa(s);
+}
+
+/* Rasterizing an SVG blocks external requests, so the face has to travel
+   inside the file as a data URI. Fetched once, reused for every export. */
+const fontReady=(async function(){
+  try{
+    const css=await (await fetch(GF_CSS)).text();
+    const blocks=css.match(/@font-face\s*\{[^}]*\}/g)||[];
+    const latin=blocks.filter(b=>/U\+0000-00FF|U\+0100-02(AF|FF)/.test(b));
+    const use=latin.length?latin:blocks.slice(0,1);
+    const out=[];
+    for(const b of use){
+      const m=b.match(/url\((https:\/\/[^)]+\.woff2)\)/);
+      if(!m) continue;
+      const bin=await (await fetch(m[1])).arrayBuffer();
+      out.push(b.replace(m[1],"data:font/woff2;base64,"+b64(bin)));
+    }
+    if(!out.length) throw new Error("no faces");
+    return out.join("");
+  }catch(e){
+    document.getElementById("fontNote").style.display="block";
+    return "";
+  }
+})();
+
+/* ----------------------------------------------------------------- drawing */
+
+const C={
+  plus:"#7cab56", minus:"#ee3b2b", net:"#000000",
+  axis:"#33475b", rule:"#cfd5da",
+  chipRegion:"#fbf0c4", chipTotal:"#f2c230",
+  text:"#000000"
+};
+const GEO={
+  chipW:168, plotX:200, plotW:530, textX:748, width:968,
+  blockH:150, rowH:50, barH:32, labelGap:66, readoutFs:21
+};
+
+/* One size for every region chip: the smallest any label needs. */
+function chipFontSize(rows){
+  let fs=36;
+  rows.forEach(r=>{
+    const len=Math.max(1,String(r.label).length);
+    fs=Math.min(fs,(GEO.chipW-20)/(len*0.56));
+  });
+  return Math.max(11,Math.round(fs*10)/10);
+}
+
+function buildSVG(rows,fontCSS){
+  const g=GEO;
+  const H=g.blockH*rows.length;
+
+  let hi=0, lo=0;
+  rows.forEach(r=>{ hi=Math.max(hi,r.plus,r.imcv); lo=Math.min(lo,r.imcv,0); });
+  const span=(hi-lo)||1;
+  const k=g.plotW/span;
+  const X=v=>g.plotX+(v-lo)*k;
+  const zero=X(0);
+  const inset=(g.rowH-g.barH)/2;
+  const chipFs=chipFontSize(rows);
+
+  const s=[];
+  s.push('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+g.width+' '+H+'" width="'+g.width+'" height="'+H+'">');
+  if(fontCSS) s.push("<style>"+fontCSS+"</style>");
+  s.push('<g font-family="'+FONT_STACK+'" font-weight="700">');
+
+  rows.forEach((r,bi)=>{
+    const top=bi*g.blockH;
+    const mid=top+g.blockH/2;
+    const r1=top+g.rowH, r2=top+2*g.rowH;
+    const barY=ri=>top+ri*g.rowH+inset;
+
+    // region chip: fills the column edge to edge
+    s.push('<rect x="0" y="'+top+'" width="'+g.chipW+'" height="'+g.blockH+'" fill="'+(r.isTotal?C.chipTotal:C.chipRegion)+'"/>');
+    s.push('<text x="'+(g.chipW/2)+'" y="'+(mid+chipFs*0.35)+'" font-size="'+chipFs+'" fill="'+C.text+'" text-anchor="middle">'+esc(r.label)+'</text>');
+
+    // leader rules
+    s.push('<line x1="'+zero+'" y1="'+r1+'" x2="'+(g.textX-14)+'" y2="'+r1+'" stroke="'+C.rule+'" stroke-width="1"/>');
+    s.push('<line x1="'+zero+'" y1="'+r2+'" x2="'+(g.textX-14)+'" y2="'+r2+'" stroke="'+C.rule+'" stroke-width="1"/>');
+    // green tip -> red bar (spans the whole -MCV row, closing the box)
+    if(Math.abs(X(r.plus)-zero)>0.5){
+      s.push('<line x1="'+X(r.plus)+'" y1="'+r1+'" x2="'+X(r.plus)+'" y2="'+r2+'" stroke="'+C.rule+'" stroke-width="1"/>');
+    }
+    // red bar left edge -> black bar
+    s.push('<line x1="'+X(r.imcv)+'" y1="'+(barY(1)+g.barH)+'" x2="'+X(r.imcv)+'" y2="'+barY(2)+'" stroke="'+C.rule+'" stroke-width="1"/>');
+
+    const bar=(ri,x1,x2,fill)=>{
+      const w=Math.abs(x2-x1);
+      if(w<0.5) return;
+      s.push('<rect x="'+Math.min(x1,x2)+'" y="'+barY(ri)+'" width="'+w+'" height="'+g.barH+'" fill="'+fill+'"/>');
+    };
+    bar(0,zero,X(r.plus),C.plus);
+    if(r.minus>0) bar(1,X(r.imcv),X(r.plus),C.minus);
+    bar(2,zero,X(r.imcv),C.net);
+
+    const line=(ri,tag,val,fill)=>{
+      const y=top+ri*g.rowH+g.rowH/2+7;
+      s.push('<text x="'+g.textX+'" y="'+y+'" font-size="'+g.readoutFs+'" fill="'+C.text+'">'+tag+'</text>');
+      s.push('<text x="'+(g.textX+g.labelGap)+'" y="'+y+'" font-size="'+g.readoutFs+'" fill="'+fill+'">'+val+'</text>');
+    };
+    line(0,"+MCV",money(r.plus),C.text);
+    line(1,"-MCV",money(r.minus,"-"),C.minus);
+    line(2,"iMCV",money(r.imcv),C.text);
+
+    if(bi>0) s.push('<line x1="0" y1="'+top+'" x2="'+g.width+'" y2="'+top+'" stroke="'+C.axis+'" stroke-width="1.5"/>');
+  });
+
+  s.push('<line x1="'+zero+'" y1="0" x2="'+zero+'" y2="'+H+'" stroke="'+C.axis+'" stroke-width="1.5"/>');
+  s.push("</g></svg>");
+  return s.join("");
+}
+
+/* ------------------------------------------------------------------- export */
+
+const OUT_WIDTH=1600;
+function svgNode(){ return document.querySelector("#stage svg"); }
+
+async function toPNG(){
+  const rows=lastRows;
+  if(!rows||!rows.length) throw new Error("Nothing to export yet.");
+  const fontCSS=await fontReady;
+  const markup=buildSVG(rows,fontCSS);
+  const vb=markup.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);
+  const w=Number(vb[1]), h=Number(vb[2]);
+  const src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(markup);
+
+  const img=await new Promise((res,rej)=>{
+    const i=new Image();
+    i.onload=()=>res(i);
+    i.onerror=()=>rej(new Error("Couldn't render the PNG."));
+    i.src=src;
+  });
+
+  const cv=document.createElement("canvas");
+  cv.width=OUT_WIDTH;
+  cv.height=Math.round(OUT_WIDTH*h/w);
+  const ctx=cv.getContext("2d");
+  ctx.clearRect(0,0,cv.width,cv.height);
+  ctx.drawImage(img,0,0,cv.width,cv.height);
+  return await new Promise((res,rej)=>cv.toBlob(b=>b?res(b):rej(new Error("Couldn't render the PNG.")),"image/png"));
+}
+
+let toastTimer=null;
+function toast(msg){
+  const t=document.getElementById("toast");
+  t.textContent=msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove("show"),2200);
+}
+
+async function copyPNG(){
+  try{
+    const blob=await toPNG();
+    if(!(navigator.clipboard&&window.ClipboardItem)) throw new Error("no-clipboard");
+    await navigator.clipboard.write([new ClipboardItem({"image/png":blob})]);
+    toast("Copied PNG to clipboard");
+  }catch(e){
+    toast("This browser blocks image copy \u2014 use Download PNG");
+  }
+}
+async function downloadPNG(){
+  try{
+    const blob=await toPNG();
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download="mcv-waterfall.png";
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+    toast("Downloaded mcv-waterfall.png");
+  }catch(e){ toast(e.message); }
+}
+
+/* --------------------------------------------------------------------- wire */
+
+const input=document.getElementById("input");
+const stage=document.getElementById("stage");
+const status=document.getElementById("status");
+let lastRows=null;
+
+function render(){
+  if(!input.value.trim()){
+    lastRows=null;
+    stage.className="empty";
+    stage.textContent="Paste your rows to draw the chart.";
+    status.className="status"; status.textContent="";
+    return;
+  }
+  const res=parse(input.value);
+  if(res.err||!res.rows.length){
+    lastRows=null;
+    stage.className="empty";
+    stage.textContent="Nothing to draw yet.";
+    status.className="status bad";
+    status.textContent=res.err||"Couldn't read that data.";
+    return;
+  }
+  lastRows=res.rows;
+  stage.className="";
+  stage.innerHTML=buildSVG(res.rows,"");
+  const n=res.rows.length-1;
+  status.className="status ok";
+  status.textContent=n+" region"+(n===1?"":"s")+" plus total. Click the chart to copy.";
+}
+
+input.addEventListener("input",render);
+document.getElementById("copy").addEventListener("click",copyPNG);
+document.getElementById("download").addEventListener("click",downloadPNG);
+document.getElementById("clear").addEventListener("click",()=>{ input.value=""; render(); input.focus(); });
+stage.addEventListener("click",()=>{ if(lastRows) copyPNG(); });
+
+/* Placeholder figures only. CC shows a negative iMCV, BB and EE show zero churn. */
+input.value=[
+  "USD\t(+)MCV\t(-)MCV\tiMCV",
+  "AA\t12,500.0\t3,200.0\t9,300",
+  "BB\t28,000.0\t0\t28,000",
+  "CC\t6,400.0\t9,850.0\t-3,450",
+  "DD\t18,750.0\t4,500.0\t14,250",
+  "EE\t3,100.0\t0\t3,100",
+  "\t68,750.0\t17,550.0\t51,200"
+].join("\n");
+render();
+if(document.fonts&&document.fonts.ready) document.fonts.ready.then(render);
+</script>
+</body>
+</html>
