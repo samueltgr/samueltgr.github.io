@@ -291,6 +291,73 @@ main{max-width:var(--wide-max); margin:0 auto; padding:0 20px 120px;}
 .rule--no .material-symbols-outlined{color:var(--err);}
 .rule b{display:block; font-size:12.5px; margin-bottom:2px;}
 
+/* ---------- Tints & Shades Section ---------- */
+.tints-shades-wrapper {
+  margin-top: 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.tints-shades-row {
+  display: block;
+}
+.tints-shades-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 18px 20px;
+}
+.tints-shades-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.tints-shades-card__title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.tints-shades-card__subtitle {
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+.swatch-strip {
+  display: flex;
+  height: 52px;
+  border-radius: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 1px solid var(--line);
+  scrollbar-width: thin;
+}
+.swatch-strip__step {
+  flex: 1 1 38px;
+  min-width: 38px;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0 0 6px;
+  font-size: 9.5px;
+  font-weight: 700;
+  font-family: ui-monospace, monospace;
+  border: none;
+  border-right: 1px solid rgba(0,0,0,.06);
+  cursor: pointer;
+  transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease;
+  outline: none;
+}
+.swatch-strip__step:last-child{ border-right:none; }
+.swatch-strip__step:hover {
+  transform: scaleY(1.08);
+  filter: brightness(1.08);
+  z-index: 2;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
 /* ---------- CHAPTER 04: LOGO SYSTEM ---------- */
 .logo-header-row {
   display: flex;
@@ -668,7 +735,7 @@ body.rail-open .rail{
     </div>
   </section>
 
-  <!-- CHAPTER 03 — COLOR -->
+<!-- CHAPTER 03 — COLOR -->
   <section class="chapter" id="color" data-i="3" data-label="Color">
     <div class="chapter__head">
       <div class="chapter__num">03</div>
@@ -676,6 +743,7 @@ body.rail-open .rail{
     </div>
     <p class="chapter__dek">Two colors do almost all the work. Everything else supports them. Tap any swatch to copy its hex code.</p>
 
+    <!-- Primary Swatches -->
     <div class="swatch-primary">
       <button class="swatch swatch--honey" onclick="copyColor('#FDD344','Honey')">
         <div class="swatch__top">
@@ -705,6 +773,7 @@ body.rail-open .rail{
       </button>
     </div>
 
+    <!-- Secondary Color Chips -->
     <div class="chip-row">
       <button class="chip" onclick="copyColor('#F9F7F3','Sand')"><div class="chip__hex" style="background:#F9F7F3; border:1px solid var(--line);"></div><span class="chip__name">Sand</span><span class="chip__code">#F9F7F3</span><span class="chip__use">Canvas / page background</span></button>
       <button class="chip" onclick="copyColor('#FBE28F','Light Yellow')"><div class="chip__hex" style="background:#FBE28F;"></div><span class="chip__name">Light Yellow</span><span class="chip__code">#FBE28F</span><span class="chip__use">Hover states &amp; highlights</span></button>
@@ -712,6 +781,108 @@ body.rail-open .rail{
       <button class="chip" onclick="copyColor('#FFFFFF','Pure White')"><div class="chip__hex" style="background:#FFFFFF; border:1px solid var(--line);"></div><span class="chip__name">Pure White</span><span class="chip__code">#FFFFFF</span><span class="chip__use">Cards &amp; interactive fields</span></button>
     </div>
 
+    <!-- Clickable Tints & Shades Matrix -->
+    <div class="tints-shades-wrapper">
+
+      <div class="tints-shades-row">
+        <div class="tints-shades-card">
+          <div class="tints-shades-card__head">
+            <span class="tints-shades-card__title">Honey</span>
+            <span class="tints-shades-card__subtitle">Shade ← Base → Tint, 10% increments</span>
+          </div>
+          <div class="swatch-strip">
+            <button class="swatch-strip__step" onclick="copyColor('#000000','Honey Shade 100%')" style="background: color-mix(in srgb, var(--honey) 0%, #000); color: #fff;" title="Honey Shade 100% · #000000">100%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#191507','Honey Shade 90%')" style="background: color-mix(in srgb, var(--honey) 10%, #000); color: #fff;" title="Honey Shade 90% · #191507">90%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#332A0E','Honey Shade 80%')" style="background: color-mix(in srgb, var(--honey) 20%, #000); color: #fff;" title="Honey Shade 80% · #332A0E">80%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#4C3F14','Honey Shade 70%')" style="background: color-mix(in srgb, var(--honey) 30%, #000); color: #fff;" title="Honey Shade 70% · #4C3F14">70%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#65541B','Honey Shade 60%')" style="background: color-mix(in srgb, var(--honey) 40%, #000); color: #fff;" title="Honey Shade 60% · #65541B">60%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#7E6A22','Honey Shade 50%')" style="background: color-mix(in srgb, var(--honey) 50%, #000); color: #fff;" title="Honey Shade 50% · #7E6A22">50%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#987F29','Honey Shade 40%')" style="background: color-mix(in srgb, var(--honey) 60%, #000); color: #fff;" title="Honey Shade 40% · #987F29">40%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#B19430','Honey Shade 30%')" style="background: color-mix(in srgb, var(--honey) 70%, #000); color: #fff;" title="Honey Shade 30% · #B19430">30%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#CAA936','Honey Shade 20%')" style="background: color-mix(in srgb, var(--honey) 80%, #000); color: #000;" title="Honey Shade 20% · #CAA936">20%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#E4BE3D','Honey Shade 10%')" style="background: color-mix(in srgb, var(--honey) 90%, #000); color: #000;" title="Honey Shade 10% · #E4BE3D">10%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#FDD344','Honey Base 100%')" style="background: var(--honey); color: #000;" title="Honey Base 100% · #FDD344">Base</button>
+            <button class="swatch-strip__step" onclick="copyColor('#FDD757','Honey Tint 10%')" style="background: color-mix(in srgb, var(--honey) 90%, #fff); color: #000;" title="Honey Tint 10% · #FDD757">10%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#FDDC69','Honey Tint 20%')" style="background: color-mix(in srgb, var(--honey) 80%, #fff); color: #000;" title="Honey Tint 20% · #FDDC69">20%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#FEE07C','Honey Tint 30%')" style="background: color-mix(in srgb, var(--honey) 70%, #fff); color: #000;" title="Honey Tint 30% · #FEE07C">30%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#FEE58F','Honey Tint 40%')" style="background: color-mix(in srgb, var(--honey) 60%, #fff); color: #000;" title="Honey Tint 40% · #FEE58F">40%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#FEE9A2','Honey Tint 50%')" style="background: color-mix(in srgb, var(--honey) 50%, #fff); color: #000;" title="Honey Tint 50% · #FEE9A2">50%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#FEEDB4','Honey Tint 60%')" style="background: color-mix(in srgb, var(--honey) 40%, #fff); color: #000;" title="Honey Tint 60% · #FEEDB4">60%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#FEF2C7','Honey Tint 70%')" style="background: color-mix(in srgb, var(--honey) 30%, #fff); color: #000;" title="Honey Tint 70% · #FEF2C7">70%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#FFF6DA','Honey Tint 80%')" style="background: color-mix(in srgb, var(--honey) 20%, #fff); color: #000;" title="Honey Tint 80% · #FFF6DA">80%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#FFFBEC','Honey Tint 90%')" style="background: color-mix(in srgb, var(--honey) 10%, #fff); color: #000;" title="Honey Tint 90% · #FFFBEC">90%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#FFFFFF','Honey Tint 100%')" style="background: color-mix(in srgb, var(--honey) 0%, #fff); color: #000;" title="Honey Tint 100% · #FFFFFF">100%</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="tints-shades-row">
+        <div class="tints-shades-card">
+          <div class="tints-shades-card__head">
+            <span class="tints-shades-card__title">Hive</span>
+            <span class="tints-shades-card__subtitle">Shade ← Base → Tint, 10% increments</span>
+          </div>
+          <div class="swatch-strip">
+            <button class="swatch-strip__step" onclick="copyColor('#000000','Hive Shade 100%')" style="background: color-mix(in srgb, var(--hive) 0%, #000); color: #fff;" title="Hive Shade 100% · #000000">100%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#000404','Hive Shade 90%')" style="background: color-mix(in srgb, var(--hive) 10%, #000); color: #fff;" title="Hive Shade 90% · #000404">90%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#000707','Hive Shade 80%')" style="background: color-mix(in srgb, var(--hive) 20%, #000); color: #fff;" title="Hive Shade 80% · #000707">80%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#000B0B','Hive Shade 70%')" style="background: color-mix(in srgb, var(--hive) 30%, #000); color: #fff;" title="Hive Shade 70% · #000B0B">70%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#000F0F','Hive Shade 60%')" style="background: color-mix(in srgb, var(--hive) 40%, #000); color: #fff;" title="Hive Shade 60% · #000F0F">60%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#001212','Hive Shade 50%')" style="background: color-mix(in srgb, var(--hive) 50%, #000); color: #fff;" title="Hive Shade 50% · #001212">50%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#001616','Hive Shade 40%')" style="background: color-mix(in srgb, var(--hive) 60%, #000); color: #fff;" title="Hive Shade 40% · #001616">40%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#001A1A','Hive Shade 30%')" style="background: color-mix(in srgb, var(--hive) 70%, #000); color: #fff;" title="Hive Shade 30% · #001A1A">30%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#001E1E','Hive Shade 20%')" style="background: color-mix(in srgb, var(--hive) 80%, #000); color: #fff;" title="Hive Shade 20% · #001E1E">20%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#002121','Hive Shade 10%')" style="background: color-mix(in srgb, var(--hive) 90%, #000); color: #fff;" title="Hive Shade 10% · #002121">10%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#002525','Hive Base 100%')" style="background: var(--hive); color: #fff;" title="Hive Base 100% · #002525">Base</button>
+            <button class="swatch-strip__step" onclick="copyColor('#193B3B','Hive Tint 10%')" style="background: color-mix(in srgb, var(--hive) 90%, #fff); color: #fff;" title="Hive Tint 10% · #193B3B">10%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#335151','Hive Tint 20%')" style="background: color-mix(in srgb, var(--hive) 80%, #fff); color: #fff;" title="Hive Tint 20% · #335151">20%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#4D6666','Hive Tint 30%')" style="background: color-mix(in srgb, var(--hive) 70%, #fff); color: #fff;" title="Hive Tint 30% · #4D6666">30%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#667C7C','Hive Tint 40%')" style="background: color-mix(in srgb, var(--hive) 60%, #fff); color: #fff;" title="Hive Tint 40% · #667C7C">40%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#809292','Hive Tint 50%')" style="background: color-mix(in srgb, var(--hive) 50%, #fff); color: #fff;" title="Hive Tint 50% · #809292">50%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#99A8A8','Hive Tint 60%')" style="background: color-mix(in srgb, var(--hive) 40%, #fff); color: #000;" title="Hive Tint 60% · #99A8A8">60%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#B2BEBE','Hive Tint 70%')" style="background: color-mix(in srgb, var(--hive) 30%, #fff); color: #000;" title="Hive Tint 70% · #B2BEBE">70%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#CCD3D3','Hive Tint 80%')" style="background: color-mix(in srgb, var(--hive) 20%, #fff); color: #000;" title="Hive Tint 80% · #CCD3D3">80%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#E6E9E9','Hive Tint 90%')" style="background: color-mix(in srgb, var(--hive) 10%, #fff); color: #000;" title="Hive Tint 90% · #E6E9E9">90%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#FFFFFF','Hive Tint 100%')" style="background: color-mix(in srgb, var(--hive) 0%, #fff); color: #000;" title="Hive Tint 100% · #FFFFFF">100%</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="tints-shades-row">
+        <div class="tints-shades-card">
+          <div class="tints-shades-card__head">
+            <span class="tints-shades-card__title">Sand</span>
+            <span class="tints-shades-card__subtitle">Shade ← Base → Tint, 10% increments</span>
+          </div>
+          <div class="swatch-strip">
+            <button class="swatch-strip__step" onclick="copyColor('#000000','Sand Shade 100%')" style="background: color-mix(in srgb, var(--sand) 0%, #000); color: #fff;" title="Sand Shade 100% · #000000">100%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#191918','Sand Shade 90%')" style="background: color-mix(in srgb, var(--sand) 10%, #000); color: #fff;" title="Sand Shade 90% · #191918">90%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#323131','Sand Shade 80%')" style="background: color-mix(in srgb, var(--sand) 20%, #000); color: #fff;" title="Sand Shade 80% · #323131">80%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#4B4A49','Sand Shade 70%')" style="background: color-mix(in srgb, var(--sand) 30%, #000); color: #fff;" title="Sand Shade 70% · #4B4A49">70%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#646361','Sand Shade 60%')" style="background: color-mix(in srgb, var(--sand) 40%, #000); color: #fff;" title="Sand Shade 60% · #646361">60%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#7C7C7A','Sand Shade 50%')" style="background: color-mix(in srgb, var(--sand) 50%, #000); color: #fff;" title="Sand Shade 50% · #7C7C7A">50%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#959492','Sand Shade 40%')" style="background: color-mix(in srgb, var(--sand) 60%, #000); color: #fff;" title="Sand Shade 40% · #959492">40%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#AEADAA','Sand Shade 30%')" style="background: color-mix(in srgb, var(--sand) 70%, #000); color: #000;" title="Sand Shade 30% · #AEADAA">30%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#C7C6C2','Sand Shade 20%')" style="background: color-mix(in srgb, var(--sand) 80%, #000); color: #000;" title="Sand Shade 20% · #C7C6C2">20%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#E0DEDB','Sand Shade 10%')" style="background: color-mix(in srgb, var(--sand) 90%, #000); color: #000;" title="Sand Shade 10% · #E0DEDB">10%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#F9F7F3','Sand Base 100%')" style="background: var(--sand); color: #000;" title="Sand Base 100% · #F9F7F3">Base</button>
+            <button class="swatch-strip__step" onclick="copyColor('#FAF8F4','Sand Tint 10%')" style="background: color-mix(in srgb, var(--sand) 90%, #fff); color: #000;" title="Sand Tint 10% · #FAF8F4">10%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#FAF9F5','Sand Tint 20%')" style="background: color-mix(in srgb, var(--sand) 80%, #fff); color: #000;" title="Sand Tint 20% · #FAF9F5">20%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#FBF9F7','Sand Tint 30%')" style="background: color-mix(in srgb, var(--sand) 70%, #fff); color: #000;" title="Sand Tint 30% · #FBF9F7">30%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#FBFAF8','Sand Tint 40%')" style="background: color-mix(in srgb, var(--sand) 60%, #fff); color: #000;" title="Sand Tint 40% · #FBFAF8">40%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#FCFBF9','Sand Tint 50%')" style="background: color-mix(in srgb, var(--sand) 50%, #fff); color: #000;" title="Sand Tint 50% · #FCFBF9">50%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#FDFCFA','Sand Tint 60%')" style="background: color-mix(in srgb, var(--sand) 40%, #fff); color: #000;" title="Sand Tint 60% · #FDFCFA">60%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#FDFDFB','Sand Tint 70%')" style="background: color-mix(in srgb, var(--sand) 30%, #fff); color: #000;" title="Sand Tint 70% · #FDFDFB">70%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#FEFDFD','Sand Tint 80%')" style="background: color-mix(in srgb, var(--sand) 20%, #fff); color: #000;" title="Sand Tint 80% · #FEFDFD">80%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#FEFEFE','Sand Tint 90%')" style="background: color-mix(in srgb, var(--sand) 10%, #fff); color: #000;" title="Sand Tint 90% · #FEFEFE">90%</button>
+            <button class="swatch-strip__step" onclick="copyColor('#FFFFFF','Sand Tint 100%')" style="background: color-mix(in srgb, var(--sand) 0%, #fff); color: #000;" title="Sand Tint 100% · #FFFFFF">100%</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Usage Rules List -->
     <div class="rule-list">
       <div class="rule rule--ok"><span class="material-symbols-outlined">check_circle</span><div><b>Hive on Sand or Pure White</b>Text at this pairing clears WCAG AAA (14:1+).</div></div>
       <div class="rule rule--ok"><span class="material-symbols-outlined">check_circle</span><div><b>Hive on Honey</b>The one approved reverse pairing for buttons and badges.</div></div>
