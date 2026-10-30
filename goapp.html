@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Opening Industrious...</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: sans-serif; text-align: center; padding-top: 50px; }
+    .btn { display: inline-block; padding: 12px 24px; background: #000; color: #fff; text-decoration: none; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <h2>Redirecting to the Industrious app...</h2>
+  <p>If the app didn't open automatically, tap below:</p>
+  <a class="btn" href="industriousoffice://home">Open App</a>
+
+  <script>
+    // Attempt automatic redirect
+    window.location.href = "industriousoffice://home";
+
+    // Optional: Redirect to App Store / Play Store after timeout if app is not installed
+    setTimeout(function() {
+      // Check if user is on iOS or Android and redirect to respective store
+      var userAgent = navigator.userAgent || navigator.vendor || window.opera;
+      if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) {
+        window.location.href = "https://apps.apple.com/app/id1571362704";
+      } else if (/android/i.test(userAgent)) {
+        window.location.href = "https://play.google.com/store/apps/details?id=com.industriousoffice.app";
+      }
+    }, 2500);
+  </script>
+</body>
+</html>
